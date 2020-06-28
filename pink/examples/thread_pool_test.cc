@@ -3,15 +3,15 @@
 // LICENSE file in the root directory of this source tree. An additional grant
 // of patent rights can be found in the PATENTS file in the same directory.
 
-#include "unistd.h"
-
-#include <string>
-#include <iostream>
+#include <unistd.h>
 #include <pthread.h>
 #include <sys/time.h>
 
+#include <string>
+#include <iostream>
+#include <mutex>
+
 #include "pink/include/thread_pool.h"
-#include "slash/include/slash_mutex.h"
 
 using namespace std;
 
@@ -21,76 +21,54 @@ uint64_t NowMicros() {
   return static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec;
 }
 
-static slash::Mutex print_lock;
+static std::mutex print_mut;
 
 void task(void *arg) {
   {
-  slash::MutexLock l(&print_lock);
-  std::cout << " task : " << *((int *)arg) << " time(micros) " << NowMicros() << "   thread id: "<< pthread_self() << std::endl;
+  std::lock_guard<std::mutex> lk(print_mut);
+  std::cout << pthread_self() << " doing task: " << *((int *)arg) << " time(micros): " << NowMicros() << std::endl;
   }
-  sleep(1);
+  usleep(20);
   delete (int*)arg;
 }
 
-
 int main() {
-  // 10 threads
-  pink::ThreadPool t(10, 1000), t2(10, 5);
-  t.start_thread_pool();
-  t2.start_thread_pool();
-  size_t qsize = 0, pqsize = 0;
+  size_t qsize = 0;
 
-  std::cout << "Test Normal Task... " << std::endl;
-  for (int i = 0; i < 10; i++) {
+  pink::TaskExecutor task_executor(10, 100);
+  std::cout << "Testing ThreadPool Executor ... " << std::endl;
+  task_executor.Start();
+  for (int i = 0; i < 1000; i++) {
     int *pi = new int(i);
-    t.Schedule(task, (void*)pi);
-    t.cur_queue_size(&qsize);
-    t.cur_time_queue_size(&pqsize);
-    slash::MutexLock l(&print_lock);
-    std::cout << " current queue size:" << qsize << ", " << pqsize << std::endl;
+    task_executor.Schedule(task, (void*)pi);
+    std::lock_guard<std::mutex> lk(print_mut);
+    std::cout << pthread_self() << " putting task: " << i << std::endl;
   }
-
+  task_executor.Stop();
   while (qsize > 0) {
-    t.cur_queue_size(&qsize);
+    qsize = task_executor.GetQueueSize();
+    std::cout << "waiting, current queue size:" << qsize << std::endl;
     sleep(1);
   }
-
   std::cout << std::endl << std::endl << std::endl;
 
-  qsize = pqsize = 0;
-  std::cout << "Test Time Task" << std::endl;
-  t.stop_thread_pool();
-  t.start_thread_pool();
-  for (int i = 0; i < 10; i++) {
+  qsize = 0;
+  pink::DelayTaskExecutor delay_task_executor(10);
+  std::cout << "Testing ThreadPool Executor ... " << std::endl;
+  delay_task_executor.Start();
+  for (int i = 0; i < 100; i++) {
     int *pi = new int(i);
-    t.DelaySchedule(i * 1000, task, (void*)pi);
-    t.cur_queue_size(&qsize);
-    t.cur_time_queue_size(&pqsize);
-    slash::MutexLock l(&print_lock);
-    std::cout << "Schedule task " << i << " time(micros) " << NowMicros() << " for " << i * 1000 * 1000  << " micros "<< std::endl;
+    delay_task_executor.DelaySchedule(i * 100, task, (void*)pi);
+    std::lock_guard<std::mutex> lk(print_mut);
+    std::cout << pthread_self() << " putting delay task: " << i << " time(micros): " << NowMicros() << std::endl;
   }
-  while (pqsize > 0) {
-    t.cur_time_queue_size(&pqsize);
+  delay_task_executor.Stop();
+  while (qsize > 0) {
+    qsize = delay_task_executor.GetQueueSize();
+    std::cout << "waiting, current queue size: " << qsize << std::endl;
     sleep(1);
   }
   std::cout << std::endl << std::endl;
-
-  qsize = pqsize = 0;
-  t.stop_thread_pool();
-  t.start_thread_pool();
-  std::cout << "Test Drop Task... " << std::endl;
-  for (int i = 0; i < 10; i++) {
-    int *pi = new int(i);
-    t.DelaySchedule(i * 1000, task, (void*)pi);
-    t.cur_queue_size(&qsize);
-    t.cur_time_queue_size(&pqsize);
-    slash::MutexLock l(&print_lock);
-    std::cout << " current queue size:" << qsize << ", " << pqsize << std::endl;
-  }
-  sleep(3);
-  std::cout << "QueueClear..." << std::endl;
-  t.stop_thread_pool();
-  sleep(10);
 
   return 0;
 }
