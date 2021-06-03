@@ -130,7 +130,7 @@ class ClientThread : public Thread {
   void CloseFd(int fd, const std::string& ip_port);
   void CleanUpConnRemaining(const std::string& ip_port);
   void DoCronTask();
-  void NotifyWrite(const std::string ip_port);
+  void NotifyWrite(const std::string& ip_port);
   void ProcessNotifyEvents(const PinkFiredEvent* pfe);
 
   int keepalive_timeout_;

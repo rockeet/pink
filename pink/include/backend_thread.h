@@ -131,7 +131,7 @@ class BackendThread : public Thread {
   void CloseFd(const int fd);
   void CleanUpConnRemaining(const int fd);
   void DoCronTask();
-  void NotifyWrite(const std::string ip_port);
+  void NotifyWrite(const std::string& ip_port);
   void NotifyWrite(const int fd);
   void NotifyClose(const int fd);
   void ProcessNotifyEvents(const PinkFiredEvent* pfe);

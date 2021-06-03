@@ -208,7 +208,7 @@ void RedisConn::ProcessRedisCmds(const std::vector<RedisCmdArgsType>& argvs, boo
 
 void RedisConn::NotifyEpoll(bool success) {
   PinkItem ti(fd(), ip_port(), success ? kNotiEpolloutAndEpollin : kNotiClose);
-  pink_epoll()->Register(ti, true);
+  pink_epoll()->Register(std::move(ti), true);
 }
 
 int RedisConn::ParserDealMessageCb(RedisParser* parser, const RedisCmdArgsType& argv) {

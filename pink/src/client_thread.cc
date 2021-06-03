@@ -298,11 +298,11 @@ void ClientThread::InternalDebugPrint() {
   log_info("___________________________________\n");
 }
 
-void ClientThread::NotifyWrite(const std::string ip_port) {
+void ClientThread::NotifyWrite(const std::string& ip_port) {
   // put fd = 0, cause this lib user doesnt need to know which fd to write to
   // we will check fd by checking ipport_conns_
   PinkItem ti(0, ip_port, kNotiWrite);
-  pink_epoll_->Register(ti, true);
+  pink_epoll_->Register(std::move(ti), true);
 }
 
 

@@ -76,13 +76,13 @@ int PinkEpoll::PinkDelEvent(const int fd) {
   return epoll_ctl(epfd_, EPOLL_CTL_DEL, fd, &ee);
 }
 
-bool PinkEpoll::Register(const PinkItem& it, bool force) {
+bool PinkEpoll::Register(PinkItem&& it, bool force) {
   bool success = false;
   notify_queue_protector_.Lock();
   if (force ||
       queue_limit_ == kUnlimitedQueue ||
       notify_queue_.size() < static_cast<size_t>(queue_limit_)) {
-    notify_queue_.push(it);
+    notify_queue_.push(std::move(it));
     success = true;
   }
   notify_queue_protector_.Unlock();
