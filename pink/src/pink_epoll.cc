@@ -93,12 +93,11 @@ bool PinkEpoll::Register(PinkItem&& it, bool force) {
 }
 
 PinkItem PinkEpoll::notify_queue_pop() {
-  PinkItem it;
   notify_queue_protector_.Lock();
-  it = notify_queue_.front();
+  PinkItem it = std::move(notify_queue_.front());
   notify_queue_.pop();
   notify_queue_protector_.Unlock();
-  return it;
+  return std::move(it);
 }
 
 int PinkEpoll::PinkPoll(const int timeout) {
