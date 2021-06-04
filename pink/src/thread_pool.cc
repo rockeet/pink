@@ -57,7 +57,7 @@ void* ThreadPool::Worker::WorkerMain(void* arg) {
 
 int ThreadPool::Worker::start() {
   if (!start_.load()) {
-    if (pthread_create(&thread_id_, NULL, &WorkerMain, thread_pool_)) {
+    if (pthread_create(&thread_id_, NULL, &WorkerMain, this)) {
       return -1;
     } else {
       start_.store(true);
