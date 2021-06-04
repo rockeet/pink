@@ -332,7 +332,7 @@ void ClientThread::ProcessNotifyEvents(const PinkFiredEvent* pfe) {
             }
           } else {
             // connection exist
-            //pink_epoll_->PinkModEvent(ipport_conns_[ip_port]->fd(), 0, EPOLLOUT | EPOLLIN);
+            pink_epoll_->PinkModEvent(ipport_conns_[ip_port]->fd(), 0, EPOLLOUT | EPOLLIN);
           }
           {
           slash::MutexLock l(&mu_);
