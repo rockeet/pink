@@ -315,7 +315,7 @@ void ClientThread::ProcessNotifyEvents(const PinkFiredEvent* pfe) {
     } else {
       for (int32_t idx = 0; idx < nread; ++idx) {
         PinkItem ti = pink_epoll_->notify_queue_pop();
-        std::string ip_port = ti.ip_port();
+        const std::string& ip_port = ti.ip_port();
         int fd = ti.fd();
         if (ti.notify_type() == kNotiWrite) {
           if (ipport_conns_.find(ip_port) == ipport_conns_.end()) {
@@ -326,8 +326,7 @@ void ClientThread::ProcessNotifyEvents(const PinkFiredEvent* pfe) {
             }
             Status s = ScheduleConnect(ip, port);
             if (!s.ok()) {
-              std::string ip_port = ip + ":" + std::to_string(port);
-              handle_->DestConnectFailedHandle(ip_port, s.ToString());
+              handle_->DestConnectFailedHandle(ip + ":" + std::to_string(port), s.ToString());
               log_info("Ip %s, port %d Connect err %s\n", ip.c_str(), port, s.ToString().c_str());
               continue;
             }
