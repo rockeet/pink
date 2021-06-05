@@ -26,7 +26,7 @@ class PinkItem {
   int fd() const {
     return fd_;
   }
-  std::string ip_port() const {
+  const std::string& ip_port() const {
     return ip_port_;
   }
 
