@@ -16,9 +16,10 @@ namespace pink {
 // same layout to epoll_event
 struct PinkFiredEvent {
   uint32_t mask;
-  union { int fd; int64_t u64; };
+  union { int fd; void* ptr; };
 } __EPOLL_PACKED;
 
+class PinkConn;
 class PinkEpoll {
  public:
   static const int kUnlimitedQueue = -1;
@@ -27,6 +28,10 @@ class PinkEpoll {
   int PinkAddEvent(const int fd, const int mask);
   int PinkDelEvent(const int fd);
   int PinkModEvent(const int fd, const int old_mask, const int mask);
+
+  int PinkAddEvent(PinkConn*, const int mask);
+  int PinkDelEvent(PinkConn*);
+  int PinkModEvent(PinkConn*, const int old_mask, const int mask);
 
   int PinkPoll(const int timeout);
 

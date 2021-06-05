@@ -100,6 +100,9 @@ class PinkConn : public std::enable_shared_from_this<PinkConn> {
     return pink_epoll_;
   }
 
+  void delayed_del() { is_waiting_del_ = true; }
+  bool is_deleting() { return is_waiting_del_;  }
+
 #ifdef __ENABLE_SSL
   SSL* ssl() {
     return ssl_;
@@ -116,6 +119,7 @@ class PinkConn : public std::enable_shared_from_this<PinkConn> {
   std::string ip_port_;
   bool is_reply_;
   bool is_writable_;
+  bool is_waiting_del_;
   struct timeval last_interaction_;
 
 #ifdef __ENABLE_SSL

@@ -4,6 +4,7 @@
 // of patent rights can be found in the PATENTS file in the same directory.
 
 #include "pink/src/pink_epoll.h"
+#include "pink/include/pink_conn.h"
 
 #include <linux/version.h>
 #include <fcntl.h>
@@ -12,6 +13,8 @@
 #include "slash/include/xdebug.h"
 
 namespace pink {
+
+PinkItem::~PinkItem() = default; // for shared_ptr<PinkConn>
 
 PinkEpoll::PinkEpoll(int queue_limit) : timeout_(1000), queue_limit_(queue_limit) {
   epfd_ = epoll_create1(EPOLL_CLOEXEC);
@@ -52,6 +55,24 @@ int PinkEpoll::PinkModEvent(const int fd, const int old_mask, const int mask) {
 
 int PinkEpoll::PinkDelEvent(const int fd) {
   return epoll_ctl(epfd_, EPOLL_CTL_DEL, fd, nullptr);
+}
+
+int PinkEpoll::PinkAddEvent(PinkConn* conn, const int mask) {
+  struct epoll_event ee;
+  ee.data.ptr = conn;
+  ee.events = mask;
+  return epoll_ctl(epfd_, EPOLL_CTL_ADD, conn->fd(), &ee);
+}
+
+int PinkEpoll::PinkModEvent(PinkConn* conn, const int old_mask, const int mask) {
+  struct epoll_event ee;
+  ee.data.ptr = conn;
+  ee.events = (old_mask | mask);
+  return epoll_ctl(epfd_, EPOLL_CTL_MOD, conn->fd(), &ee);
+}
+
+int PinkEpoll::PinkDelEvent(PinkConn* conn) {
+  return epoll_ctl(epfd_, EPOLL_CTL_DEL, conn->fd(), nullptr);
 }
 
 bool PinkEpoll::Register(PinkItem&& it, bool force) {

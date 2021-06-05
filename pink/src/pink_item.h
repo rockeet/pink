@@ -7,6 +7,7 @@
 #define PINK_SRC_PINK_ITEM_H_
 
 #include <string>
+#include <memory>
 
 #include "pink/include/pink_define.h"
 
@@ -20,6 +21,7 @@ class PinkItem {
         notify_type_(type),
         ip_port_(ip_port) {
   }
+  ~PinkItem();
 
   int fd() const {
     return fd_;
@@ -32,6 +34,7 @@ class PinkItem {
     return notify_type_;
   }
 
+  std::shared_ptr<class PinkConn> conn;
  private:
   int fd_;
   NotifyType notify_type_;
