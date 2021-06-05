@@ -17,7 +17,7 @@ namespace pink {
 struct PinkFiredEvent {
   uint32_t mask;
   union { int fd; int64_t u64; };
-};
+} __EPOLL_PACKED;
 
 class PinkEpoll {
  public:
@@ -30,7 +30,7 @@ class PinkEpoll {
 
   int PinkPoll(const int timeout);
 
-  PinkFiredEvent* firedevent() const { return firedevent_; }
+  PinkFiredEvent* firedevent() { return events_; }
 
   int notify_receive_fd() {
     return notify_receive_fd_;

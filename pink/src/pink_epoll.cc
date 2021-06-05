@@ -33,8 +33,6 @@ PinkEpoll::PinkEpoll(int queue_limit) : timeout_(1000), queue_limit_(queue_limit
 }
 
 PinkEpoll::~PinkEpoll() {
-  free(firedevent_);
-  free(events_);
   close(epfd_);
 }
 
@@ -82,7 +80,7 @@ PinkItem PinkEpoll::notify_queue_pop() {
 
 int PinkEpoll::PinkPoll(const int timeout) {
   static_assert(sizeof(PinkFiredEvent) == sizeof(epoll_event));
-  static_assert(offsetof(PinkFiredEvent, mask) == offsetof(epoll_event, event));
+  static_assert(offsetof(PinkFiredEvent, mask) == offsetof(epoll_event, events));
   static_assert(offsetof(PinkFiredEvent, fd) == offsetof(epoll_event, data.fd));
   return epoll_wait(epfd_, (epoll_event*)events_, MAX_EVENTS, timeout);
 }

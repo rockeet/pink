@@ -79,8 +79,6 @@ bool WorkerThread::MoveConnIn(PinkItem&& it, bool force) {
 }
 
 void *WorkerThread::ThreadMain() {
-  int nfds;
-  PinkFiredEvent *pfe = NULL;
   char bb[2048];
   PinkItem ti;
   std::shared_ptr<PinkConn> in_conn = nullptr;

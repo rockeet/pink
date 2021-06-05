@@ -359,8 +359,6 @@ void BackendThread::ProcessNotifyEvents(const PinkFiredEvent* pfe) {
 }
 
 void *BackendThread::ThreadMain() {
-  int nfds = 0;
-
   struct timeval when;
   gettimeofday(&when, NULL);
   struct timeval now = when;
