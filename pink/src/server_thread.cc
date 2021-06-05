@@ -165,8 +165,6 @@ void ServerThread::ProcessNotifyEvents(const PinkFiredEvent* pfe) {
 }
 
 void *ServerThread::ThreadMain() {
-  int nfds;
-  PinkFiredEvent *pfe;
   Status s;
   struct sockaddr_in cliaddr;
   socklen_t clilen = sizeof(struct sockaddr);
@@ -205,9 +203,9 @@ void *ServerThread::ThreadMain() {
       }
     }
 
-    nfds = pink_epoll_->PinkPoll(timeout);
-    for (int i = 0; i < nfds; i++) {
-      pfe = (pink_epoll_->firedevent()) + i;
+    int nfds = pink_epoll_->PinkPoll(timeout);
+    auto pfe = pink_epoll_->firedevent();
+    for (int i = 0; i < nfds; i++, pfe++) {
       fd = pfe->fd;
 
       if (pfe->fd == pink_epoll_->notify_receive_fd()) {

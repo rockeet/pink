@@ -372,16 +372,15 @@ int PubSubThread::PubSubNumPat() {
 }
 
 void *PubSubThread::ThreadMain() {
-  int nfds;
   PinkFiredEvent *pfe;
   slash::Status s;
   std::shared_ptr<PinkConn> in_conn = nullptr;
   char triger[1];
 
   while (!should_stop()) {
-    nfds = pink_epoll_->PinkPoll(PINK_CRON_INTERVAL);
-    for (int i = 0; i < nfds; i++) {
-      pfe = (pink_epoll_->firedevent()) + i;
+    int nfds = pink_epoll_->PinkPoll(timeout);
+    auto pfe = pink_epoll_->firedevent();
+    for (int i = 0; i < nfds; i++, pfe++) {
       if (pfe->fd == pink_epoll_->notify_receive_fd()) {        // New connection comming
         if (pfe->mask & EPOLLIN) {
           read(pink_epoll_->notify_receive_fd(), triger, 1);

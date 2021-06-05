@@ -13,9 +13,10 @@
 
 namespace pink {
 
+// same layout to epoll_event
 struct PinkFiredEvent {
-  int fd;
-  int mask;
+  uint32_t mask;
+  union { int fd; int64_t u64; };
 };
 
 class PinkEpoll {
@@ -29,7 +30,7 @@ class PinkEpoll {
 
   int PinkPoll(const int timeout);
 
-  PinkFiredEvent *firedevent() const { return firedevent_; }
+  PinkFiredEvent* firedevent() const { return firedevent_; }
 
   int notify_receive_fd() {
     return notify_receive_fd_;
@@ -44,9 +45,7 @@ class PinkEpoll {
 
  private:
   int epfd_;
-  struct epoll_event *events_;
   int timeout_;
-  PinkFiredEvent *firedevent_;
 
   /*
    * The PbItem queue is the fd queue, receive from dispatch thread
@@ -60,6 +59,9 @@ class PinkEpoll {
    */
   int notify_receive_fd_;
   int notify_send_fd_;
+
+  const static size_t MAX_EVENTS = 1024;
+  PinkFiredEvent events_[MAX_EVENTS];
 };
 
 }  // namespace pink

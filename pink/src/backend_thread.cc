@@ -360,7 +360,6 @@ void BackendThread::ProcessNotifyEvents(const PinkFiredEvent* pfe) {
 
 void *BackendThread::ThreadMain() {
   int nfds = 0;
-  PinkFiredEvent *pfe = NULL;
 
   struct timeval when;
   gettimeofday(&when, NULL);
@@ -395,13 +394,9 @@ void *BackendThread::ThreadMain() {
     //{
     //InternalDebugPrint();
     //}
-    nfds = pink_epoll_->PinkPoll(timeout);
-    for (int i = 0; i < nfds; i++) {
-      pfe = (pink_epoll_->firedevent()) + i;
-      if (pfe == NULL) {
-        continue;
-      }
-
+    int nfds = pink_epoll_->PinkPoll(timeout);
+    auto pfe = pink_epoll_->firedevent();
+    for (int i = 0; i < nfds; i++, pfe++) {
       if (pfe->fd == pink_epoll_->notify_receive_fd()) {
         ProcessNotifyEvents(pfe);
         continue;
@@ -409,7 +404,7 @@ void *BackendThread::ThreadMain() {
 
       int should_close = 0;
       mu_.Lock();
-      std::map<int, std::shared_ptr<PinkConn>>::iterator iter = conns_.find(pfe->fd);
+      auto iter = conns_.find(pfe->fd);
       if (iter == conns_.end()) {
         mu_.Unlock();
         log_info("fd %d not found in fd_conns\n", pfe->fd);

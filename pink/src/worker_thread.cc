@@ -111,10 +111,9 @@ void *WorkerThread::ThreadMain() {
       }
     }
 
-    nfds = pink_epoll_->PinkPoll(timeout);
-
-    for (int i = 0; i < nfds; i++) {
-      pfe = (pink_epoll_->firedevent()) + i;
+    int nfds = pink_epoll_->PinkPoll(timeout);
+    auto pfe = pink_epoll_->firedevent();
+    for (int i = 0; i < nfds; i++, pfe++) {
       if (pfe->fd == pink_epoll_->notify_receive_fd()) {
         if (pfe->mask & EPOLLIN) {
           int32_t nread = read(pink_epoll_->notify_receive_fd(), bb, 2048);

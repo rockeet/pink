@@ -13,27 +13,12 @@
 
 namespace pink {
 
-static const int kPinkMaxClients = 10240;
-
 PinkEpoll::PinkEpoll(int queue_limit) : timeout_(1000), queue_limit_(queue_limit) {
-#if defined(EPOLL_CLOEXEC)
-    epfd_ = epoll_create1(EPOLL_CLOEXEC);
-#else
-    epfd_ = epoll_create(1024);
-#endif
-
-  fcntl(epfd_, F_SETFD, fcntl(epfd_, F_GETFD) | FD_CLOEXEC);
-
+  epfd_ = epoll_create1(EPOLL_CLOEXEC);
   if (epfd_ < 0) {
     log_err("epoll create fail");
     exit(1);
   }
-  events_ = (struct epoll_event *)malloc(
-      sizeof(struct epoll_event) * kPinkMaxClients);
-
-  firedevent_ = reinterpret_cast<PinkFiredEvent*>(malloc(
-      sizeof(PinkFiredEvent) * kPinkMaxClients));
-
   int fds[2];
   if (pipe(fds)) {
     exit(-1);
@@ -68,12 +53,7 @@ int PinkEpoll::PinkModEvent(const int fd, const int old_mask, const int mask) {
 }
 
 int PinkEpoll::PinkDelEvent(const int fd) {
-  /*
-   * Kernel < 2.6.9 need a non null event point to EPOLL_CTL_DEL
-   */
-  struct epoll_event ee;
-  ee.data.fd = fd;
-  return epoll_ctl(epfd_, EPOLL_CTL_DEL, fd, &ee);
+  return epoll_ctl(epfd_, EPOLL_CTL_DEL, fd, nullptr);
 }
 
 bool PinkEpoll::Register(PinkItem&& it, bool force) {
@@ -101,30 +81,10 @@ PinkItem PinkEpoll::notify_queue_pop() {
 }
 
 int PinkEpoll::PinkPoll(const int timeout) {
-  int retval, numevents = 0;
-  retval = epoll_wait(epfd_, events_, PINK_MAX_CLIENTS, timeout);
-  if (retval > 0) {
-    numevents = retval;
-    for (int i = 0; i < numevents; i++) {
-      int mask = 0;
-      firedevent_[i].fd = (events_ + i)->data.fd;
-
-      if ((events_ + i)->events & EPOLLIN) {
-        mask |= EPOLLIN;
-      }
-      if ((events_ + i)->events & EPOLLOUT) {
-        mask |= EPOLLOUT;
-      }
-      if ((events_ + i)->events & EPOLLERR) {
-        mask |= EPOLLERR;
-      }
-      if ((events_ + i)->events & EPOLLHUP) {
-        mask |= EPOLLHUP;
-      }
-      firedevent_[i].mask = mask;
-    }
-  }
-  return numevents;
+  static_assert(sizeof(PinkFiredEvent) == sizeof(epoll_event));
+  static_assert(offsetof(PinkFiredEvent, mask) == offsetof(epoll_event, event));
+  static_assert(offsetof(PinkFiredEvent, fd) == offsetof(epoll_event, data.fd));
+  return epoll_wait(epfd_, (epoll_event*)events_, MAX_EVENTS, timeout);
 }
 
 }  // namespace pink
