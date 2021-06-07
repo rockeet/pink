@@ -138,7 +138,7 @@ WriteStatus RedisConn::SendReply() {
   ssize_t nwritten = 0;
   size_t wbuf_len = response_.size();
   while (wbuf_len > 0) {
-    nwritten = write(fd(), response_.data() + wbuf_pos_, wbuf_len - wbuf_pos_);
+    nwritten = send(fd(), response_.data() + wbuf_pos_, wbuf_len - wbuf_pos_, 0);
     if (nwritten <= 0) {
       break;
     }
