@@ -348,7 +348,7 @@ void BackendThread::ProcessNotifyEvents(const PinkFiredEvent* pfe) {
           // get msg from to_send_
           std::vector<std::string>& msgs = iter->second;
           for (auto& msg : msgs) {
-            conns_[fd]->WriteResp(msg);
+            conns_[fd]->WriteResp(std::move(msg));
           }
           to_send_.erase(iter);
           }

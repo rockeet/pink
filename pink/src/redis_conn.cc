@@ -171,8 +171,11 @@ WriteStatus RedisConn::SendReply() {
   }
 }
 
-int RedisConn::WriteResp(const std::string& resp) {
-  response_.append(resp);
+int RedisConn::WriteResp(std::string&& resp) {
+  if (response_.empty())
+    response_ = std::move(resp);
+  else
+    response_.append(resp);
   set_is_reply(true);
   return 0;
 }

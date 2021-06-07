@@ -165,8 +165,7 @@ bool PbConn::is_reply() {
   return is_reply_ > 0;
 }
 
-int PbConn::WriteResp(const std::string& resp) {
-
+int PbConn::WriteResp(std::string&& resp) {
   std::string tag;
   BuildInternalTag(resp, &tag);
   slash::MutexLock l(&resp_mu_);

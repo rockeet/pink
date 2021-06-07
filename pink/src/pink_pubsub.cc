@@ -421,7 +421,7 @@ void *PubSubThread::ThreadMain() {
                   continue;
                 }
                 std::string resp = ConstructPublishResp(it->first, channel, msg, false);
-                it->second[i]->WriteResp(resp);
+                it->second[i]->WriteResp(std::move(resp));
                 WriteStatus write_status = it->second[i]->SendReply();
                 if (write_status == kWriteHalf) {
                   pink_epoll_->PinkModEvent(it->second[i]->fd(),
@@ -451,7 +451,7 @@ void *PubSubThread::ThreadMain() {
                   continue;
                 }
                 std::string resp = ConstructPublishResp(it->first, channel, msg, true);
-                it->second[i]->WriteResp(resp);
+                it->second[i]->WriteResp(std::move(resp));
                 WriteStatus write_status = it->second[i]->SendReply();
                 if (write_status == kWriteHalf) {
                   pink_epoll_->PinkModEvent(it->second[i]->fd(),

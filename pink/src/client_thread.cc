@@ -350,7 +350,7 @@ void ClientThread::ProcessNotifyEvents(const PinkFiredEvent* pfe) {
           // get msg from to_send_
           std::vector<std::string>& msgs = iter->second;
           for (auto& msg : msgs) {
-            if (ipport_conns_[ip_port]->WriteResp(msg)) {
+            if (ipport_conns_[ip_port]->WriteResp(std::move(msg))) {
               to_send_[ip_port].push_back(msg);
               NotifyWrite(ip_port);
             }

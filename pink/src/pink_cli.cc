@@ -240,10 +240,10 @@ Status PinkCli::SendRaw(void *buf, size_t count) {
   ssize_t nwritten;
 
   while (nleft > 0) {
-    if ((nwritten = write(rep_->sockfd, wbuf + pos, nleft)) < 0) {
+    if ((nwritten = send(rep_->sockfd, wbuf + pos, nleft, 0)) < 0) {
       if (errno == EINTR) {
         continue;
-      } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      } else if (errno == EAGAIN) {
         return Status::Timeout("Send timeout");
       } else {
         return Status::IOError("write error " + std::string(strerror(errno)));

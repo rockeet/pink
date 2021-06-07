@@ -32,7 +32,7 @@ class PbConn: public PinkConn {
   ReadStatus GetRequest() override;
   WriteStatus SendReply() override;
   void TryResizeBuffer() override;
-  int WriteResp(const std::string& resp) override ;
+  int WriteResp(std::string&& resp) override ;
   void NotifyWrite();
   void NotifyClose();
   void set_is_reply(const bool reply) override;
