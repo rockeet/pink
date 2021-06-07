@@ -13,6 +13,7 @@
 #include "pink/src/pink_item.h"
 #include "pink/src/pink_epoll.h"
 #include "pink/include/pink_pubsub.h"
+#include "terark/stdtypes.hpp"
 
 namespace pink {
 
@@ -382,9 +383,10 @@ void *PubSubThread::ThreadMain() {
     for (int i = 0; i < nfds; i++, pfe++) {
       if (pfe->fd == pink_epoll_->notify_receive_fd()) {        // New connection comming
         if (pfe->mask & EPOLLIN) {
-          read(pink_epoll_->notify_receive_fd(), triger, 1);
+          PinkItem ti;
+          auto nRead = read(pink_epoll_->notify_receive_fd(), &ti, sizeof(PinkItem));
+          TERARK_VERIFY_EQ(nRead, sizeof(PinkItem));
           {
-            PinkItem ti = pink_epoll_->notify_queue_pop();
             if (ti.notify_type() == kNotiClose) {
             } else if (ti.notify_type() == kNotiEpollout) {
               pink_epoll_->PinkModEvent(ti.fd(), 0, EPOLLOUT);

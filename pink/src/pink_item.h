@@ -6,6 +6,8 @@
 #ifndef PINK_SRC_PINK_ITEM_H_
 #define PINK_SRC_PINK_ITEM_H_
 
+#include <assert.h>
+#include <string.h>
 #include <string>
 #include <memory>
 
@@ -16,17 +18,13 @@ namespace pink {
 class PinkItem {
  public:
   PinkItem() {}
-  PinkItem(const int fd, const std::string &ip_port, NotifyType type = kNotiConnect)
-      : fd_(fd),
-        notify_type_(type),
-        ip_port_(ip_port) {
-  }
+  PinkItem(const int fd, const std::string &ip_port, NotifyType type = kNotiConnect);
   ~PinkItem();
 
   int fd() const {
     return fd_;
   }
-  const std::string& ip_port() const {
+  const std::string ip_port() const {
     return ip_port_;
   }
 
@@ -34,12 +32,16 @@ class PinkItem {
     return notify_type_;
   }
 
+  void kill_sp_conn();
+  void sp_conn_moved();
+
   std::shared_ptr<class PinkConn> conn;
  private:
-  int fd_;
+  char ip_port_[16+27];
   NotifyType notify_type_;
-  std::string ip_port_;
+  int fd_;
 };
+static_assert(sizeof(PinkItem) == 64);
 
 }  // namespace pink
 #endif  // PINK_SRC_PINK_ITEM_H_

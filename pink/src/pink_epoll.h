@@ -43,7 +43,7 @@ class PinkEpoll {
   int notify_send_fd() {
     return notify_send_fd_;
   }
-  PinkItem notify_queue_pop();
+  //PinkItem notify_queue_pop();
 
   bool Register(PinkItem&& it, bool force);
   bool Deregister(const PinkItem& it) { return false; }
@@ -56,8 +56,8 @@ class PinkEpoll {
    * The PbItem queue is the fd queue, receive from dispatch thread
    */
   int queue_limit_;
-  slash::Mutex notify_queue_protector_;
-  std::queue<PinkItem> notify_queue_;
+//  slash::Mutex notify_queue_protector_;
+//  std::queue<PinkItem> notify_queue_;
 
   /*
    * These two fd receive the notify from dispatch thread
@@ -65,7 +65,7 @@ class PinkEpoll {
   int notify_receive_fd_;
   int notify_send_fd_;
 
-  const static size_t MAX_EVENTS = 1024;
+  const static size_t MAX_EVENTS = 64;
   PinkFiredEvent events_[MAX_EVENTS];
 };
 

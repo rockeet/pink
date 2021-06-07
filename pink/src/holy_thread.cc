@@ -12,6 +12,9 @@
 #include "pink/include/pink_conn.h"
 #include "slash/include/xdebug.h"
 
+#include "terark/stdtypes.hpp"
+#include "terark/util/function.hpp"
+
 namespace pink {
 
 HolyThread::HolyThread(int port,
@@ -293,15 +296,18 @@ bool HolyThread::KillConn(const std::string& ip_port) {
 
 void HolyThread::ProcessNotifyEvents(const pink::PinkFiredEvent* pfe) {
   if (pfe->mask & EPOLLIN) {
-    char bb[2048];
-    int32_t nread = read(pink_epoll_->notify_receive_fd(), bb, 2048);
+    std::vector<PinkItem> bb(64);
+    int32_t nread = read(pink_epoll_->notify_receive_fd(), &bb[0], bb.size()*sizeof(PinkItem));
     //  log_info("notify_received bytes %d\n", nread);
     if (nread == 0) {
       return;
     } else {
+      TERARK_VERIFY_AL(nread, sizeof(PinkItem));
+      nread /= sizeof(PinkItem);
       for (int32_t idx = 0; idx < nread; ++idx) {
-        pink::PinkItem ti = pink_epoll_->notify_queue_pop();
-        std::string ip_port = ti.ip_port();
+        //PinkItem ti = pink_epoll_->notify_queue_pop();
+        PinkItem& ti = bb[idx];
+        TERARK_SCOPE_EXIT(ti.kill_sp_conn());
         int fd = ti.fd();
         if (ti.notify_type() == pink::kNotiWrite) {
           pink_epoll_->PinkModEvent(ti.fd(), 0, EPOLLOUT | EPOLLIN);

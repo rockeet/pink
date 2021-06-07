@@ -11,6 +11,9 @@
 #include "pink/src/pink_item.h"
 #include "pink/src/pink_epoll.h"
 
+#include "terark/stdtypes.hpp"
+#include "terark/util/function.hpp"
+
 namespace pink {
 
 
@@ -80,8 +83,7 @@ bool WorkerThread::MoveConnIn(PinkItem&& it, bool force) {
 }
 
 void *WorkerThread::ThreadMain() {
-  char bb[2048];
-  PinkItem ti;
+  std::vector<PinkItem> bb(64);
   std::shared_ptr<PinkConn> in_conn = nullptr;
 
   struct timeval when;
@@ -115,12 +117,16 @@ void *WorkerThread::ThreadMain() {
     for (int i = 0; i < nfds; i++, pfe++) {
       if (pfe->fd == pink_epoll_->notify_receive_fd()) {
         if (pfe->mask & EPOLLIN) {
-          int32_t nread = read(pink_epoll_->notify_receive_fd(), bb, 2048);
+          int32_t nread = read(pink_epoll_->notify_receive_fd(), &bb[0], bb.size()*sizeof(PinkItem));
+          TERARK_VERIFY_AL(nread, sizeof(PinkItem));
+          nread /= sizeof(PinkItem);
           if (nread <= 0) {
             continue;
           } else {
             for (int32_t idx = 0; idx < nread; ++idx) {
-              PinkItem ti = pink_epoll_->notify_queue_pop();
+              //PinkItem ti = pink_epoll_->notify_queue_pop();
+              PinkItem& ti = bb[idx];
+              TERARK_SCOPE_EXIT(ti.kill_sp_conn());
               if (ti.notify_type() == kNotiConnect) {
                 std::shared_ptr<PinkConn> tc = conn_factory_->NewPinkConn(
                     ti.fd(), ti.ip_port(),

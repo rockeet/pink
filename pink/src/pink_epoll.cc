@@ -11,10 +11,25 @@
 
 #include "pink/include/pink_define.h"
 #include "slash/include/xdebug.h"
+#include "terark/stdtypes.hpp"
 
 namespace pink {
 
+PinkItem::PinkItem(const int fd, const std::string &ip_port, NotifyType type) {
+  memset(this, 0, sizeof(*this));
+  fd_ = fd;
+  notify_type_ = type;
+  TERARK_VERIFY_LT(ip_port.size(), sizeof(ip_port_));
+  memcpy(ip_port_, ip_port.c_str(), ip_port.size()+1);
+}
 PinkItem::~PinkItem() = default; // for shared_ptr<PinkConn>
+void PinkItem::kill_sp_conn() {
+  std::shared_ptr<class PinkConn> killer(std::move(conn));
+}
+void PinkItem::sp_conn_moved() {
+  char moved[sizeof(std::shared_ptr<class PinkConn>)];
+  new (moved) std::shared_ptr<class PinkConn>(std::move(conn));
+}
 
 PinkEpoll::PinkEpoll(int queue_limit) : timeout_(1000), queue_limit_(queue_limit) {
   epfd_ = epoll_create1(EPOLL_CLOEXEC);
@@ -76,6 +91,12 @@ int PinkEpoll::PinkDelEvent(PinkConn* conn) {
 }
 
 bool PinkEpoll::Register(PinkItem&& it, bool force) {
+#if 1
+  auto nWrite = write(notify_send_fd_, &it, sizeof(PinkItem));
+  TERARK_VERIFY_EQ(nWrite, sizeof(PinkItem));
+  it.sp_conn_moved(); // it has been moved to pipe queue
+  return true;
+#else
   bool success = false;
   notify_queue_protector_.Lock();
   if (force ||
@@ -89,8 +110,10 @@ bool PinkEpoll::Register(PinkItem&& it, bool force) {
     write(notify_send_fd_, "", 1);
   }
   return success;
+#endif
 }
 
+#if 0
 PinkItem PinkEpoll::notify_queue_pop() {
   notify_queue_protector_.Lock();
   PinkItem it = std::move(notify_queue_.front());
@@ -98,6 +121,7 @@ PinkItem PinkEpoll::notify_queue_pop() {
   notify_queue_protector_.Unlock();
   return std::move(it);
 }
+#endif
 
 int PinkEpoll::PinkPoll(const int timeout) {
   static_assert(sizeof(PinkFiredEvent) == sizeof(epoll_event));

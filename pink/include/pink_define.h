@@ -34,7 +34,7 @@ enum BlockType {
   kNonBlock = 1,
 };
 
-enum NotifyType {
+enum NotifyType : unsigned char {
   kNotiConnect = 0,
   kNotiClose = 1,
   kNotiEpollout = 2,
