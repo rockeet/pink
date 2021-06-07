@@ -24,7 +24,7 @@ class PinkItem {
   int fd() const {
     return fd_;
   }
-  const std::string ip_port() const {
+  const char* ip_port() const {
     return ip_port_;
   }
 

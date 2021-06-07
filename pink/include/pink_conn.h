@@ -56,7 +56,7 @@ class PinkConn : public std::enable_shared_from_this<PinkConn> {
     return fd_;
   }
 
-  std::string ip_port() const {
+  const std::string& ip_port() const {
     return ip_port_;
   }
 
