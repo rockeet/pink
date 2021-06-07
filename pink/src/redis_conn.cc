@@ -7,6 +7,7 @@
 
 #include <stdlib.h>
 #include <limits.h>
+#include <sys/socket.h>
 
 #include <string>
 #include <sstream>
