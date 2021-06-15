@@ -40,13 +40,8 @@ class PinkEpoll {
   int notify_receive_fd() {
     return notify_receive_fd_;
   }
-  int notify_send_fd() {
-    return notify_send_fd_;
-  }
-  //PinkItem notify_queue_pop();
 
   bool Register(PinkItem&& it, bool force);
-  bool Deregister(const PinkItem& it) { return false; }
 
  private:
   int epfd_;
