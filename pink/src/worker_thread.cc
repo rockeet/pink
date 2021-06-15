@@ -112,115 +112,103 @@ void *WorkerThread::ThreadMain() {
       }
     }
 
+    int32_t nread = pink_epoll_->PopAllNotify(bb);
+    for (int32_t idx = 0; idx < nread; ++idx) {
+      //PinkItem ti = pink_epoll_->notify_queue_pop();
+      PinkItem& ti = bb[idx];
+      TERARK_SCOPE_EXIT(ti.kill_sp_conn());
+      if (ti.notify_type() == kNotiConnect) {
+        std::shared_ptr<PinkConn> tc = conn_factory_->NewPinkConn(
+            ti.fd(), ti.ip_port(),
+            server_thread_, private_data_, pink_epoll_);
+        if (!tc || !tc->SetNonblock()) {
+          continue;
+        }
+
+#ifdef __ENABLE_SSL
+        // Create SSL failed
+        if (server_thread_->security() &&
+          !tc->CreateSSL(server_thread_->ssl_ctx())) {
+          CloseFd(tc);
+          continue;
+        }
+#endif
+
+        {
+          slash::WriteLock l(&rwlock_);
+          conns_[ti.fd()] = tc;
+        }
+        pink_epoll_->PinkAddEvent(tc.get(), EPOLLIN);
+      } else if (ti.notify_type() == kNotiClose) {
+        // should close?
+      } else if (ti.notify_type() == kNotiEpollout) {
+        assert(nullptr != ti.conn.get());
+        pink_epoll_->PinkModEvent(ti.conn.get(), 0, EPOLLOUT);
+      } else if (ti.notify_type() == kNotiEpollin) {
+        assert(nullptr != ti.conn.get());
+        pink_epoll_->PinkModEvent(ti.conn.get(), 0, EPOLLIN);
+      } else if (ti.notify_type() == kNotiEpolloutAndEpollin) {
+        assert(nullptr != ti.conn.get());
+        pink_epoll_->PinkModEvent(ti.conn.get(), 0, EPOLLOUT | EPOLLIN);
+      } else if (ti.notify_type() == kNotiWait) {
+        // do not register events
+        assert(nullptr != ti.conn.get());
+        pink_epoll_->PinkAddEvent(ti.conn.get(), 0);
+      }
+    }
+
     int nfds = pink_epoll_->PinkPoll(timeout);
     auto pfe = pink_epoll_->firedevent();
     for (int i = 0; i < nfds; i++, pfe++) {
-      if (pfe->fd == pink_epoll_->notify_receive_fd()) {
-        if (pfe->mask & EPOLLIN) {
-          int32_t nread = read(pink_epoll_->notify_receive_fd(), &bb[0], bb.size()*sizeof(PinkItem));
-          TERARK_VERIFY_AL(nread, sizeof(PinkItem));
-          nread /= sizeof(PinkItem);
-          if (nread <= 0) {
-            continue;
-          } else {
-            for (int32_t idx = 0; idx < nread; ++idx) {
-              //PinkItem ti = pink_epoll_->notify_queue_pop();
-              PinkItem& ti = bb[idx];
-              TERARK_SCOPE_EXIT(ti.kill_sp_conn());
-              if (ti.notify_type() == kNotiConnect) {
-                std::shared_ptr<PinkConn> tc = conn_factory_->NewPinkConn(
-                    ti.fd(), ti.ip_port(),
-                    server_thread_, private_data_, pink_epoll_);
-                if (!tc || !tc->SetNonblock()) {
-                  continue;
-                }
-
-#ifdef __ENABLE_SSL
-                // Create SSL failed
-                if (server_thread_->security() &&
-                  !tc->CreateSSL(server_thread_->ssl_ctx())) {
-                  CloseFd(tc);
-                  continue;
-                }
-#endif
-
-                {
-                  slash::WriteLock l(&rwlock_);
-                  conns_[ti.fd()] = tc;
-                }
-                pink_epoll_->PinkAddEvent(tc.get(), EPOLLIN);
-              } else if (ti.notify_type() == kNotiClose) {
-                // should close?
-              } else if (ti.notify_type() == kNotiEpollout) {
-                assert(nullptr != ti.conn.get());
-                pink_epoll_->PinkModEvent(ti.conn.get(), 0, EPOLLOUT);
-              } else if (ti.notify_type() == kNotiEpollin) {
-                assert(nullptr != ti.conn.get());
-                pink_epoll_->PinkModEvent(ti.conn.get(), 0, EPOLLIN);
-              } else if (ti.notify_type() == kNotiEpolloutAndEpollin) {
-                assert(nullptr != ti.conn.get());
-                pink_epoll_->PinkModEvent(ti.conn.get(), 0, EPOLLOUT | EPOLLIN);
-              } else if (ti.notify_type() == kNotiWait) {
-                // do not register events
-                assert(nullptr != ti.conn.get());
-                pink_epoll_->PinkAddEvent(ti.conn.get(), 0);
-              }
-            }
-          }
-        } else {
-          continue;
-        }
+      in_conn = NULL;
+      int should_close = 0;
+      auto pconn = (PinkConn*)pfe->ptr;
+      if (pconn->is_deleting()) {
+        pink_epoll_->PinkDelEvent(pconn);
+        slash::WriteLock l(&rwlock_);
+        conns_.erase(pconn->fd());
+        continue;
       } else {
-        in_conn = NULL;
-        int should_close = 0;
-        auto pconn = (PinkConn*)pfe->ptr;
-        if (pconn->is_deleting()) {
-          pink_epoll_->PinkDelEvent(pconn);
-          slash::WriteLock l(&rwlock_);
-          conns_.erase(pconn->fd());
+        in_conn = pconn->shared_from_this();
+      }
+
+      if ((pfe->mask & EPOLLOUT) && in_conn->is_reply()) {
+        WriteStatus write_status = in_conn->SendReply();
+        in_conn->set_last_interaction(now);
+        if (write_status == kWriteAll) {
+          pink_epoll_->PinkModEvent(pconn, 0, EPOLLIN);
+          in_conn->set_is_reply(false);
+        } else if (write_status == kWriteHalf) {
           continue;
         } else {
-          in_conn = pconn->shared_from_this();
+          should_close = 1;
         }
+      }
 
-        if ((pfe->mask & EPOLLOUT) && in_conn->is_reply()) {
-          WriteStatus write_status = in_conn->SendReply();
-          in_conn->set_last_interaction(now);
-          if (write_status == kWriteAll) {
-            pink_epoll_->PinkModEvent(pconn, 0, EPOLLIN);
-            in_conn->set_is_reply(false);
-          } else if (write_status == kWriteHalf) {
-            continue;
-          } else {
-            should_close = 1;
-          }
+      if (!should_close && (pfe->mask & EPOLLIN)) {
+        ReadStatus read_status = in_conn->GetRequest();
+        in_conn->set_last_interaction(now);
+        if (read_status == kReadAll) {
+          pink_epoll_->PinkModEvent(pconn, 0, 0);
+          // Wait for the conn complete asynchronous task and
+          // Mod Event to EPOLLOUT
+        } else if (read_status == kReadHalf) {
+          continue;
+        } else {
+          should_close = 1;
         }
+      }
 
-        if (!should_close && (pfe->mask & EPOLLIN)) {
-          ReadStatus read_status = in_conn->GetRequest();
-          in_conn->set_last_interaction(now);
-          if (read_status == kReadAll) {
-            pink_epoll_->PinkModEvent(pconn, 0, 0);
-            // Wait for the conn complete asynchronous task and
-            // Mod Event to EPOLLOUT
-          } else if (read_status == kReadHalf) {
-            continue;
-          } else {
-            should_close = 1;
-          }
+      if ((pfe->mask & EPOLLERR) || (pfe->mask & EPOLLHUP) || should_close) {
+        int fd = pconn->fd();
+        pink_epoll_->PinkDelEvent(pconn);
+        CloseFd(in_conn);
+        in_conn = NULL;
+        {
+          slash::WriteLock l(&rwlock_);
+          conns_.erase(fd);
         }
-
-        if ((pfe->mask & EPOLLERR) || (pfe->mask & EPOLLHUP) || should_close) {
-          int fd = pconn->fd();
-          pink_epoll_->PinkDelEvent(pconn);
-          CloseFd(in_conn);
-          in_conn = NULL;
-          {
-            slash::WriteLock l(&rwlock_);
-            conns_.erase(fd);
-          }
-        }
-      }  // connection event
+      }
     }  // for (int i = 0; i < nfds; i++)
   }  // while (!should_stop())
 

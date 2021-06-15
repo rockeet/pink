@@ -12,6 +12,10 @@
 #include "pink/include/pink_define.h"
 #include "slash/include/xdebug.h"
 #include "terark/stdtypes.hpp"
+#include "terark/hash_common.hpp"
+#include "terark/circular_queue.hpp"
+#include "terark/util/concurrent_queue.hpp"
+//#include <boost/lockfree/queue.hpp>
 
 namespace pink {
 
@@ -31,23 +35,31 @@ void PinkItem::sp_conn_moved() {
   new (moved) std::shared_ptr<class PinkConn>(std::move(conn));
 }
 
-PinkEpoll::PinkEpoll(int queue_limit) : timeout_(1000), queue_limit_(queue_limit) {
+using PinkItemStore   = std::aligned_storage_t<sizeof(PinkItem)>;
+#if 1
+using terark::util::concurrent_queue;
+using terark::circular_queue;
+using NotifyQueueBase = concurrent_queue<circular_queue<PinkItemStore, true> >;
+#else
+using FixedSized      = boost::lockfree::fixed_sized<true>;
+using NotifyQueueBase = boost::lockfree::queue<PinkItemStore, FixedSized>;
+#endif
+
+class NotifyQueue : public NotifyQueueBase {
+public:
+  explicit NotifyQueue(size_t cap)
+      : NotifyQueueBase(terark::__hsm_align_pow2(cap)-1) {
+    this->queue().init(terark::__hsm_align_pow2(cap));
+  }
+};
+
+PinkEpoll::PinkEpoll(int queue_limit) : timeout_(1000) {
   epfd_ = epoll_create1(EPOLL_CLOEXEC);
   if (epfd_ < 0) {
     log_err("epoll create fail");
     exit(1);
   }
-  int fds[2];
-  if (pipe(fds)) {
-    exit(-1);
-  }
-  notify_receive_fd_ = fds[0];
-  notify_send_fd_ = fds[1];
-
-  fcntl(notify_receive_fd_, F_SETFD, fcntl(notify_receive_fd_, F_GETFD) | FD_CLOEXEC);
-  fcntl(notify_send_fd_, F_SETFD, fcntl(notify_send_fd_, F_GETFD) | FD_CLOEXEC);
-
-  PinkAddEvent(notify_receive_fd_, EPOLLIN | EPOLLERR | EPOLLHUP);
+  notify_queue_.reset(new NotifyQueue(queue_limit));
 }
 
 PinkEpoll::~PinkEpoll() {
@@ -91,37 +103,16 @@ int PinkEpoll::PinkDelEvent(PinkConn* conn) {
 }
 
 bool PinkEpoll::Register(PinkItem&& it, bool force) {
-#if 1
-  auto nWrite = write(notify_send_fd_, &it, sizeof(PinkItem));
-  TERARK_VERIFY_EQ(nWrite, sizeof(PinkItem));
+  notify_queue_->push_back(reinterpret_cast<PinkItemStore&>(it));
   it.sp_conn_moved(); // it has been moved to pipe queue
   return true;
-#else
-  bool success = false;
-  notify_queue_protector_.Lock();
-  if (force ||
-      queue_limit_ == kUnlimitedQueue ||
-      notify_queue_.size() < static_cast<size_t>(queue_limit_)) {
-    notify_queue_.push(std::move(it));
-    success = true;
-  }
-  notify_queue_protector_.Unlock();
-  if (success) {
-    write(notify_send_fd_, "", 1);
-  }
-  return success;
-#endif
 }
 
-#if 0
-PinkItem PinkEpoll::notify_queue_pop() {
-  notify_queue_protector_.Lock();
-  PinkItem it = std::move(notify_queue_.front());
-  notify_queue_.pop();
-  notify_queue_protector_.Unlock();
-  return std::move(it);
+int PinkEpoll::PopAllNotify(PinkItem* vec, int cap) {
+  auto store = reinterpret_cast<PinkItemStore*>(vec);
+  size_t n = notify_queue_->pop_front_n_nowait(store, cap);
+  return int(n);
 }
-#endif
 
 int PinkEpoll::PinkPoll(const int timeout) {
   static_assert(sizeof(PinkFiredEvent) == sizeof(epoll_event));

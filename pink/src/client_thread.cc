@@ -310,62 +310,53 @@ void ClientThread::NotifyWrite(const std::string& ip_port) {
 
 
 void ClientThread::ProcessNotifyEvents(const PinkFiredEvent* pfe) {
-  if (pfe->mask & EPOLLIN) {
-    std::vector<PinkItem> bb(64);
-    int32_t nread = read(pink_epoll_->notify_receive_fd(), &bb[0], bb.size()*sizeof(PinkItem));
-    if (nread == 0) {
-      return;
-    } else {
-      TERARK_VERIFY_AL(nread, sizeof(PinkItem));
-      nread /= sizeof(PinkItem);
-      for (int32_t idx = 0; idx < nread; ++idx) {
-        //PinkItem ti = pink_epoll_->notify_queue_pop();
-        PinkItem& ti = bb[idx];
-        TERARK_SCOPE_EXIT(ti.kill_sp_conn());
-        const std::string& ip_port = ti.ip_port();
-        int fd = ti.fd();
-        if (ti.notify_type() == kNotiWrite) {
-          if (ipport_conns_.find(ip_port) == ipport_conns_.end()) {
-            std::string ip;
-            int port = 0;
-            if (!slash::ParseIpPortString(ip_port, ip, port)) {
-              continue;
-            }
-            Status s = ScheduleConnect(ip, port);
-            if (!s.ok()) {
-              handle_->DestConnectFailedHandle(ip + ":" + std::to_string(port), s.ToString());
-              log_info("Ip %s, port %d Connect err %s\n", ip.c_str(), port, s.ToString().c_str());
-              continue;
-            }
-          } else {
-            // connection exist
-            pink_epoll_->PinkModEvent(ipport_conns_[ip_port]->fd(), 0, EPOLLOUT | EPOLLIN);
-          }
-          {
-          slash::MutexLock l(&mu_);
-          auto iter = to_send_.find(ip_port);
-          if (iter == to_send_.end()) {
-            continue;
-          }
-          // get msg from to_send_
-          std::vector<std::string>& msgs = iter->second;
-          for (auto& msg : msgs) {
-            if (ipport_conns_[ip_port]->WriteResp(std::move(msg))) {
-              to_send_[ip_port].push_back(msg);
-              NotifyWrite(ip_port);
-            }
-          }
-          to_send_.erase(iter);
-          }
-        } else if (ti.notify_type() == kNotiClose) {
-          log_info("received kNotiClose\n");
-          pink_epoll_->PinkDelEvent(fd);
-          CloseFd(fd, ip_port);
-          fd_conns_.erase(fd);
-          ipport_conns_.erase(ip_port);
-          connecting_fds_.erase(fd);
+  std::vector<PinkItem> bb(64);
+  int32_t nread = pink_epoll_->PopAllNotify(bb);
+  for (int32_t idx = 0; idx < nread; ++idx) {
+    PinkItem& ti = bb[idx];
+    TERARK_SCOPE_EXIT(ti.kill_sp_conn());
+    const std::string& ip_port = ti.ip_port();
+    int fd = ti.fd();
+    if (ti.notify_type() == kNotiWrite) {
+      if (ipport_conns_.find(ip_port) == ipport_conns_.end()) {
+        std::string ip;
+        int port = 0;
+        if (!slash::ParseIpPortString(ip_port, ip, port)) {
+          continue;
+        }
+        Status s = ScheduleConnect(ip, port);
+        if (!s.ok()) {
+          handle_->DestConnectFailedHandle(ip + ":" + std::to_string(port), s.ToString());
+          log_info("Ip %s, port %d Connect err %s\n", ip.c_str(), port, s.ToString().c_str());
+          continue;
+        }
+      } else {
+        // connection exist
+        pink_epoll_->PinkModEvent(ipport_conns_[ip_port]->fd(), 0, EPOLLOUT | EPOLLIN);
+      }
+      {
+      slash::MutexLock l(&mu_);
+      auto iter = to_send_.find(ip_port);
+      if (iter == to_send_.end()) {
+        continue;
+      }
+      // get msg from to_send_
+      std::vector<std::string>& msgs = iter->second;
+      for (auto& msg : msgs) {
+        if (ipport_conns_[ip_port]->WriteResp(std::move(msg))) {
+          to_send_[ip_port].push_back(msg);
+          NotifyWrite(ip_port);
         }
       }
+      to_send_.erase(iter);
+      }
+    } else if (ti.notify_type() == kNotiClose) {
+      log_info("received kNotiClose\n");
+      pink_epoll_->PinkDelEvent(fd);
+      CloseFd(fd, ip_port);
+      fd_conns_.erase(fd);
+      ipport_conns_.erase(ip_port);
+      connecting_fds_.erase(fd);
     }
   }
 }
@@ -404,14 +395,10 @@ void *ClientThread::ThreadMain() {
     //{
     //InternalDebugPrint();
     //}
+    ProcessNotifyEvents(nullptr);
     int nfds = pink_epoll_->PinkPoll(timeout);
     auto pfe = pink_epoll_->firedevent();
     for (int i = 0; i < nfds; i++, pfe++) {
-      if (pfe->fd == pink_epoll_->notify_receive_fd()) {
-        ProcessNotifyEvents(pfe);
-        continue;
-      }
-
       int should_close = 0;
       std::map<int, std::shared_ptr<PinkConn>>::iterator iter = fd_conns_.find(pfe->fd);
       if (iter == fd_conns_.end()) {

@@ -378,30 +378,26 @@ void *PubSubThread::ThreadMain() {
   char triger[1];
 
   while (!should_stop()) {
+    {
+      PinkItem ti;
+      auto nRead = pink_epoll_->PopAllNotify(&ti, 1);
+      if (nRead) {
+        if (ti.notify_type() == kNotiClose) {
+        } else if (ti.notify_type() == kNotiEpollout) {
+          pink_epoll_->PinkModEvent(ti.fd(), 0, EPOLLOUT);
+        } else if (ti.notify_type() == kNotiEpollin) {
+          pink_epoll_->PinkModEvent(ti.fd(), 0, EPOLLIN);
+        } else if (ti.notify_type() == kNotiEpolloutAndEpollin) {
+          pink_epoll_->PinkModEvent(ti.fd(), 0, EPOLLOUT | EPOLLIN);
+        } else if (ti.notify_type() == kNotiWait) {
+          // do not register events
+          pink_epoll_->PinkAddEvent(ti.fd(), 0);
+        }
+      }
+    }
     int nfds = pink_epoll_->PinkPoll(PINK_CRON_INTERVAL);
     auto pfe = pink_epoll_->firedevent();
     for (int i = 0; i < nfds; i++, pfe++) {
-      if (pfe->fd == pink_epoll_->notify_receive_fd()) {        // New connection comming
-        if (pfe->mask & EPOLLIN) {
-          PinkItem ti;
-          auto nRead = read(pink_epoll_->notify_receive_fd(), &ti, sizeof(PinkItem));
-          TERARK_VERIFY_EQ(nRead, sizeof(PinkItem));
-          {
-            if (ti.notify_type() == kNotiClose) {
-            } else if (ti.notify_type() == kNotiEpollout) {
-              pink_epoll_->PinkModEvent(ti.fd(), 0, EPOLLOUT);
-            } else if (ti.notify_type() == kNotiEpollin) {
-              pink_epoll_->PinkModEvent(ti.fd(), 0, EPOLLIN);
-            } else if (ti.notify_type() == kNotiEpolloutAndEpollin) {
-              pink_epoll_->PinkModEvent(ti.fd(), 0, EPOLLOUT | EPOLLIN);
-            } else if (ti.notify_type() == kNotiWait) {
-              // do not register events
-              pink_epoll_->PinkAddEvent(ti.fd(), 0);
-            }
-          }
-          continue;
-        }
-      }
       if (pfe->fd == msg_pfd_[0]) {           // Publish message
         if (pfe->mask & EPOLLIN) {
           read(msg_pfd_[0], triger, 1);

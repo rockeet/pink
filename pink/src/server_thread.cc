@@ -203,15 +203,11 @@ void *ServerThread::ThreadMain() {
       }
     }
 
+    ProcessNotifyEvents(nullptr);
     int nfds = pink_epoll_->PinkPoll(timeout);
     auto pfe = pink_epoll_->firedevent();
     for (int i = 0; i < nfds; i++, pfe++) {
       fd = pfe->fd;
-
-      if (pfe->fd == pink_epoll_->notify_receive_fd()) {
-        ProcessNotifyEvents(pfe);
-        continue;
-      }
 
       /*
        * Handle server event

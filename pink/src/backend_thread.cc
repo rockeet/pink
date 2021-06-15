@@ -317,49 +317,38 @@ void BackendThread::NotifyClose(const int fd) {
 }
 
 void BackendThread::ProcessNotifyEvents(const PinkFiredEvent* pfe) {
-  if (pfe->mask & EPOLLIN) {
-    std::vector<PinkItem> bb(64);
-    int32_t nread = read(pink_epoll_->notify_receive_fd(), &bb[0], bb.size()*sizeof(PinkItem));
-    if (nread == 0) {
-      return;
-    } else {
-      TERARK_VERIFY_AL(nread, sizeof(PinkItem));
-      nread /= sizeof(PinkItem);
-      for (int32_t idx = 0; idx < nread; ++idx) {
-        //PinkItem ti = pink_epoll_->notify_queue_pop();
-        PinkItem& ti = bb[idx];
-        TERARK_SCOPE_EXIT(ti.kill_sp_conn());
-        int fd = ti.fd();
-        std::string ip_port = ti.ip_port();
-        slash::MutexLock l(&mu_);
-        if (ti.notify_type() == kNotiWrite) {
-          if (conns_.find(fd) == conns_.end()) {
-           //TODO: need clean and notify?
-            continue;
-          } else {
-            // connection exist
-            pink_epoll_->PinkModEvent(fd, 0, EPOLLOUT | EPOLLIN);
-          }
-          {
-          auto iter = to_send_.find(fd);
-          if (iter == to_send_.end()) {
-            continue;
-          }
-          // get msg from to_send_
-          std::vector<std::string>& msgs = iter->second;
-          for (auto& msg : msgs) {
-            conns_[fd]->WriteResp(std::move(msg));
-          }
-          to_send_.erase(iter);
-          }
-        } else if (ti.notify_type() == kNotiClose) {
-          log_info("received kNotiClose\n");
-          pink_epoll_->PinkDelEvent(fd);
-          CloseFd(fd);
-          conns_.erase(fd);
-          connecting_fds_.erase(fd);
-        }
+  std::vector<PinkItem> bb(64);
+  int32_t nread = pink_epoll_->PopAllNotify(bb);
+  for (int32_t idx = 0; idx < nread; ++idx) {
+    PinkItem& ti = bb[idx];
+    TERARK_SCOPE_EXIT(ti.kill_sp_conn());
+    int fd = ti.fd();
+    std::string ip_port = ti.ip_port();
+    slash::MutexLock l(&mu_);
+    if (ti.notify_type() == kNotiWrite) {
+      if (conns_.find(fd) == conns_.end()) {
+        //TODO: need clean and notify?
+        continue;
+      } else {
+        // connection exist
+        pink_epoll_->PinkModEvent(fd, 0, EPOLLOUT | EPOLLIN);
       }
+      auto iter = to_send_.find(fd);
+      if (iter == to_send_.end()) {
+        continue;
+      }
+      // get msg from to_send_
+      std::vector<std::string>& msgs = iter->second;
+      for (auto& msg : msgs) {
+        conns_[fd]->WriteResp(std::move(msg));
+      }
+      to_send_.erase(iter);
+    } else if (ti.notify_type() == kNotiClose) {
+      log_info("received kNotiClose\n");
+      pink_epoll_->PinkDelEvent(fd);
+      CloseFd(fd);
+      conns_.erase(fd);
+      connecting_fds_.erase(fd);
     }
   }
 }
@@ -398,14 +387,10 @@ void *BackendThread::ThreadMain() {
     //{
     //InternalDebugPrint();
     //}
+    ProcessNotifyEvents(nullptr);
     int nfds = pink_epoll_->PinkPoll(timeout);
     auto pfe = pink_epoll_->firedevent();
     for (int i = 0; i < nfds; i++, pfe++) {
-      if (pfe->fd == pink_epoll_->notify_receive_fd()) {
-        ProcessNotifyEvents(pfe);
-        continue;
-      }
-
       int should_close = 0;
       mu_.Lock();
       auto iter = conns_.find(pfe->fd);
