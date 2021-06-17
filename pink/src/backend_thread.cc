@@ -70,21 +70,23 @@ int BackendThread::StopThread() {
 Status BackendThread::Write(const int fd, const std::string& msg) {
   {
     slash::MutexLock l(&mu_);
-    if (conns_.find(fd) == conns_.end()) {
+    const auto iter = conns_.find(fd);
+    if (conns_.end() == iter) {
       return Status::Corruption(std::to_string(fd) + " cannot find !");
     }  
-    auto addr = conns_.find(fd)->second->ip_port();
+    auto addr = iter->second->ip_port();
     if (!handle_->AccessHandle(addr)) {
       return Status::Corruption(addr + " is baned by user!");
     }
     size_t size = 0;
-    for (auto& str : to_send_[fd]) {
+    auto& str_vec = to_send_[fd];
+    for (auto& str : str_vec) {
       size += str.size();
     }
     if (size > kConnWriteBuf) {
       return Status::Corruption("Connection buffer over maximum size");
     }
-    to_send_[fd].push_back(msg);
+    str_vec.push_back(msg);
   }
   NotifyWrite(fd);
   return Status::OK();
@@ -333,14 +335,14 @@ void BackendThread::ProcessNotifyEvents(const PinkFiredEvent* pfe) {
         std::string ip_port = ti.ip_port();
         slash::MutexLock l(&mu_);
         if (ti.notify_type() == kNotiWrite) {
-          if (conns_.find(fd) == conns_.end()) {
+          auto conn_iter = conns_.find(fd);
+          if (conns_.end() == conn_iter) {
            //TODO: need clean and notify?
             continue;
           } else {
             // connection exist
             pink_epoll_->PinkModEvent(fd, 0, EPOLLOUT | EPOLLIN);
           }
-          {
           auto iter = to_send_.find(fd);
           if (iter == to_send_.end()) {
             continue;
@@ -348,10 +350,9 @@ void BackendThread::ProcessNotifyEvents(const PinkFiredEvent* pfe) {
           // get msg from to_send_
           std::vector<std::string>& msgs = iter->second;
           for (auto& msg : msgs) {
-            conns_[fd]->WriteResp(std::move(msg));
+            conn_iter->second->WriteResp(std::move(msg));
           }
           to_send_.erase(iter);
-          }
         } else if (ti.notify_type() == kNotiClose) {
           log_info("received kNotiClose\n");
           pink_epoll_->PinkDelEvent(fd);

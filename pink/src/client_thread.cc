@@ -325,7 +325,8 @@ void ClientThread::ProcessNotifyEvents(const PinkFiredEvent* pfe) {
         const std::string& ip_port = ti.ip_port();
         int fd = ti.fd();
         if (ti.notify_type() == kNotiWrite) {
-          if (ipport_conns_.find(ip_port) == ipport_conns_.end()) {
+          auto conn_iter = ipport_conns_.find(ip_port);
+          if (ipport_conns_.end() == conn_iter) {
             std::string ip;
             int port = 0;
             if (!slash::ParseIpPortString(ip_port, ip, port)) {
@@ -339,7 +340,7 @@ void ClientThread::ProcessNotifyEvents(const PinkFiredEvent* pfe) {
             }
           } else {
             // connection exist
-            pink_epoll_->PinkModEvent(ipport_conns_[ip_port]->fd(), 0, EPOLLOUT | EPOLLIN);
+            pink_epoll_->PinkModEvent(conn_iter->second->fd(), 0, EPOLLOUT | EPOLLIN);
           }
           {
           slash::MutexLock l(&mu_);

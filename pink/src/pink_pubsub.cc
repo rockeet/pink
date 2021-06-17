@@ -199,33 +199,31 @@ void PubSubThread::Subscribe(const std::shared_ptr<PinkConn>& conn,
   for (size_t i = 0; i < channels.size(); i++) {
     if (pattern) {  // if pattern mode, register channel to map
       slash::MutexLock channel_lock(&pattern_mutex_);
-      if (pubsub_pattern_.find(channels[i]) != pubsub_pattern_.end()) {
-        auto conn_ptr = std::find(pubsub_pattern_[channels[i]].begin(),
-                                  pubsub_pattern_[channels[i]].end(),
-                                  conn);
-        if (conn_ptr == pubsub_pattern_[channels[i]].end()) {   // the connection first subscrbied
-          pubsub_pattern_[channels[i]].push_back(conn);
+      auto ib = pubsub_pattern_.insert({channels[i], {}});
+      auto& vec = ib.first->second;
+      if (!ib.second) {
+        auto conn_ptr = std::find(vec.begin(), vec.end(), conn);
+        if (conn_ptr == vec.end()) {   // the connection first subscrbied
+          vec.push_back(conn);
           ++subscribed;
         }
       } else {    // the channel first subscribed
-        std::vector<std::shared_ptr<PinkConn> > conns = {conn};
-        pubsub_pattern_[channels[i]] = conns;
+        vec.push_back(conn);
         ++subscribed;
       }
       result->push_back(std::make_pair(channels[i], subscribed));
     } else {    // if general mode, reigster channel to map
       slash::MutexLock channel_lock(&channel_mutex_);
-      if (pubsub_channel_.find(channels[i]) != pubsub_channel_.end()) {
-        auto conn_ptr = std::find(pubsub_channel_[channels[i]].begin(),
-                                  pubsub_channel_[channels[i]].end(),
-                                  conn);
-        if (conn_ptr == pubsub_channel_[channels[i]].end()) {   // the connection first subscribed
-          pubsub_channel_[channels[i]].push_back(conn);
+      auto ib = pubsub_pattern_.insert({channels[i], {}});
+      auto& vec = ib.first->second;
+      if (!ib.second) {
+        auto conn_ptr = std::find(vec.begin(), vec.end(), conn);
+        if (conn_ptr == vec.end()) {   // the connection first subscribed
+          vec.push_back(conn);
           ++subscribed;
         }
       } else {    // the channel first subscribed
-        std::vector<std::shared_ptr<PinkConn> > conns = {conn};
-        pubsub_channel_[channels[i]] = conns;
+        vec.push_back(conn);
         ++subscribed;
       }
       result->push_back(std::make_pair(channels[i], subscribed));
