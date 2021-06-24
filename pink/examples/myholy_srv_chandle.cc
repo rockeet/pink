@@ -13,7 +13,7 @@ using namespace pink;
 
 class MyConn: public PbConn {
  public:
-  MyConn(int fd, std::string ip_port, Thread *thread, void* private_data);
+  MyConn(int fd, const std::string& ip_port, Thread *thread, void* private_data);
   virtual ~MyConn();
 
   Thread* thread() {
@@ -30,7 +30,7 @@ class MyConn: public PbConn {
   myproto::PingRes ping_res_;
 };
 
-MyConn::MyConn(int fd, ::std::string ip_port, Thread *thread,
+MyConn::MyConn(int fd, const std::string& ip_port, Thread *thread,
                void* worker_specific_data)
     : PbConn(fd, ip_port, thread),
       thread_(thread),
