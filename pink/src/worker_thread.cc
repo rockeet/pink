@@ -302,7 +302,7 @@ bool WorkerThread::TryKillConn(const std::string& ip_port) {
   return false;
 }
 
-void WorkerThread::CloseFd(std::shared_ptr<PinkConn> conn) {
+void WorkerThread::CloseFd(const std::shared_ptr<PinkConn>& conn) {
   close(conn->fd());
   server_thread_->handle_->FdClosedHandle(conn->fd(), conn->ip_port());
 }

@@ -127,7 +127,7 @@ class BackendThread : public Thread {
   void SetWaitConnectOnEpoll(int sockfd);
 
   void AddConnection(const std::string& peer_ip, int peer_port, int sockfd);
-  void CloseFd(std::shared_ptr<PinkConn> conn);
+  void CloseFd(const std::shared_ptr<PinkConn>& conn);
   void CloseFd(const int fd);
   void CleanUpConnRemaining(const int fd);
   void DoCronTask();

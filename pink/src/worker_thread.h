@@ -82,7 +82,7 @@ class WorkerThread : public Thread {
   std::set<std::string> deleting_conn_ipport_;
 
   // clean conns
-  void CloseFd(std::shared_ptr<PinkConn> conn);
+  void CloseFd(const std::shared_ptr<PinkConn>& conn);
   void Cleanup();
 };  // class WorkerThread
 

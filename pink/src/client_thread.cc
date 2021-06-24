@@ -199,7 +199,7 @@ Status ClientThread::ScheduleConnect(const std::string& dst_ip, int dst_port) {
   return s;
 }
 
-void ClientThread::CloseFd(std::shared_ptr<PinkConn> conn) {
+void ClientThread::CloseFd(const std::shared_ptr<PinkConn>& conn) {
   close(conn->fd());
   CleanUpConnRemaining(conn->ip_port());
   handle_->FdClosedHandle(conn->fd(), conn->ip_port());

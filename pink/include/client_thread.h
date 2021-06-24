@@ -126,7 +126,7 @@ class ClientThread : public Thread {
   // Try to connect fd noblock, if return EINPROGRESS or EAGAIN or EWOULDBLOCK
   // put this fd in epoll (SetWaitConnectOnEpoll), process in ProcessConnectStatus
   slash::Status ScheduleConnect(const std::string& dst_ip, int dst_port);
-  void CloseFd(std::shared_ptr<PinkConn> conn);
+  void CloseFd(const std::shared_ptr<PinkConn>& conn);
   void CloseFd(int fd, const std::string& ip_port);
   void CleanUpConnRemaining(const std::string& ip_port);
   void DoCronTask();

@@ -37,7 +37,7 @@ static std::string ConstructPublishResp(const std::string& subscribe_channel,
   return resp.str();
 }
 
-void CloseFd(std::shared_ptr<PinkConn> conn) {
+void CloseFd(const std::shared_ptr<PinkConn>& conn) {
   close(conn->fd());
 }
 

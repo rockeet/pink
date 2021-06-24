@@ -268,7 +268,7 @@ bool HTTPResponse::SerializeHeader() {
 }
 
 HTTPConn::HTTPConn(const int fd, const std::string &ip_port,
-                   Thread *thread, std::shared_ptr<HTTPHandles> handles,
+                   Thread *thread, const std::shared_ptr<HTTPHandles>& handles,
                    void* worker_specific_data)
       : PinkConn(fd, ip_port, thread),
 #ifdef __ENABLE_SSL

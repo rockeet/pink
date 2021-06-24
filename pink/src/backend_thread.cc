@@ -222,7 +222,7 @@ std::shared_ptr<PinkConn> BackendThread::GetConn(int fd) {
 
 }
 
-void BackendThread::CloseFd(std::shared_ptr<PinkConn> conn) {
+void BackendThread::CloseFd(const std::shared_ptr<PinkConn>& conn) {
   close(conn->fd());
   CleanUpConnRemaining(conn->fd());
   handle_->FdClosedHandle(conn->fd(), conn->ip_port());

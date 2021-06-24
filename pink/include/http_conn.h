@@ -187,7 +187,7 @@ class HTTPHandles {
 class HTTPConn: public PinkConn {
  public:
   HTTPConn(const int fd, const std::string &ip_port,
-           Thread *sthread, std::shared_ptr<HTTPHandles> handles_,
+           Thread *sthread, const std::shared_ptr<HTTPHandles>& handles_,
            void* worker_specific_data);
   ~HTTPConn();
 

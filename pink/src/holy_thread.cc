@@ -253,7 +253,7 @@ void HolyThread::DoCronTask() {
   }
 }
 
-void HolyThread::CloseFd(std::shared_ptr<PinkConn> conn) {
+void HolyThread::CloseFd(const std::shared_ptr<PinkConn>& conn) {
   close(conn->fd());
   handle_->FdClosedHandle(conn->fd(), conn->ip_port());
 }

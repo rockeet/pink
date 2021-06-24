@@ -75,7 +75,7 @@ class HolyThread: public ServerThread {
   void HandleNewConn(int connfd, const std::string &ip_port) override;
   void HandleConnEvent(PinkFiredEvent *pfe) override;
 
-  void CloseFd(std::shared_ptr<PinkConn> conn);
+  void CloseFd(const std::shared_ptr<PinkConn>& conn);
   void Cleanup();
 };  // class HolyThread
 
