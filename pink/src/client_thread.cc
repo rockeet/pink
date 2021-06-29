@@ -256,7 +256,7 @@ void ClientThread::DoCronTask() {
   }
 
   for (auto& conn_name : to_del) {
-    std::map<std::string, std::shared_ptr<PinkConn>>::iterator iter = ipport_conns_.find(conn_name);
+    auto iter = ipport_conns_.find(conn_name);
     if (iter == ipport_conns_.end()) {
       continue;
     }
@@ -264,7 +264,7 @@ void ClientThread::DoCronTask() {
     pink_epoll_->PinkDelEvent(conn->fd());
     CloseFd(conn);
     fd_conns_.erase(conn->fd());
-    ipport_conns_.erase(conn->ip_port());
+    ipport_conns_.erase(iter);
     connecting_fds_.erase(conn->fd());
   }
 }

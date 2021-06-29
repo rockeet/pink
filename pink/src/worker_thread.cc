@@ -247,7 +247,7 @@ void WorkerThread::DoCronTask() {
       return;
     }
 
-    std::map<int, std::shared_ptr<PinkConn>>::iterator iter = conns_.begin();
+    auto iter = conns_.begin();
     while (iter != conns_.end()) {
       std::shared_ptr<PinkConn> conn = iter->second;
       // Check connection should be closed
