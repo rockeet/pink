@@ -27,7 +27,7 @@ namespace pink {
 
 class PinkItem;
 class PinkEpoll;
-class PinkFiredEvent;
+struct PinkFiredEvent;
 class PinkConn;
 class ConnFactory;
 

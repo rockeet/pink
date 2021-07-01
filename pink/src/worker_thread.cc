@@ -273,10 +273,10 @@ void WorkerThread::DoCronTask() {
       ++iter;
     }
   }
-  for (const auto conn : to_close) {
+  for (auto& conn : to_close) {
     CloseFd(conn);
   }
-  for (const auto conn : to_timeout) {
+  for (auto& conn : to_timeout) {
     CloseFd(conn);
     server_thread_->handle_->FdTimeoutHandle(conn->fd(), conn->ip_port());
   }

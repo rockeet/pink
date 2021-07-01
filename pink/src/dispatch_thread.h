@@ -19,7 +19,7 @@
 namespace pink {
 
 class PinkItem;
-class PinkFiredEvent;
+struct PinkFiredEvent;
 class WorkerThread;
 
 class DispatchThread : public ServerThread {

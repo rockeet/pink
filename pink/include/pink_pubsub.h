@@ -29,7 +29,7 @@
 namespace pink {
 
 class PinkEpoll;
-class PinkFiredEvent;
+struct PinkFiredEvent;
 class PinkConn;
 
 class PubSubThread : public Thread {

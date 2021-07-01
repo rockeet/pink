@@ -31,7 +31,7 @@ void PinkItem::sp_conn_moved() {
   new (moved) std::shared_ptr<class PinkConn>(std::move(conn));
 }
 
-PinkEpoll::PinkEpoll(int queue_limit) : timeout_(1000), queue_limit_(queue_limit) {
+PinkEpoll::PinkEpoll(int /*queue_limit*/) {
   epfd_ = epoll_create1(EPOLL_CLOEXEC);
   if (epfd_ < 0) {
     log_err("epoll create fail");

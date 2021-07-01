@@ -45,12 +45,12 @@ class PinkEpoll {
 
  private:
   int epfd_;
-  int timeout_;
+//int timeout_;
 
   /*
    * The PbItem queue is the fd queue, receive from dispatch thread
    */
-  int queue_limit_;
+//  int queue_limit_;
 //  slash::Mutex notify_queue_protector_;
 //  std::queue<PinkItem> notify_queue_;
 
