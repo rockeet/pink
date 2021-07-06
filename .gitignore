@@ -63,3 +63,6 @@ pink/tags
 pink/third
 *.d.*
 *.d
+
+cmake
+build
