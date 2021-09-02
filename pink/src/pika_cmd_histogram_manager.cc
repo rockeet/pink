@@ -23,7 +23,7 @@ void PikaCmdHistogramManager::Add_Histogram_Metric(const std::string &name, long
   assert(step<StepMax);
   auto iter = HistogramTable[step].find(name);
   if (iter == HistogramTable[step].end()) {
-    LOG(ERROR) << "command:" << name << " step:" << step << " don't have Histogram";
+    LOG(ERROR) << "command:" << name << " step:" << (unsigned int)step << " don't have Histogram";
     return;
   }
   iter->second->Add(value);
