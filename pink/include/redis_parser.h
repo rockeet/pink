@@ -68,6 +68,8 @@ class RedisParser {
     return error_code_;
   }
   void *data; /* A pointer to get hook to the "connection" or "socket" object */
+
+  std::string cur_command;
  private:
   // for DEBUG
   void PrintCurrentStatus();

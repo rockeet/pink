@@ -4,6 +4,7 @@
 // of patent rights can be found in the PATENTS file in the same directory.
 
 #include <vector>
+#include <chrono>
 
 #include "pink/src/worker_thread.h"
 
@@ -13,6 +14,10 @@
 
 #include "terark/stdtypes.hpp"
 #include "terark/util/function.hpp"
+#include "slash/include/slash_string.h"
+#include "pink/include/pika_cmd_histogram_manager.h"
+
+extern PikaCmdHistogramManager* g_pika_cmd_histogram_manager;
 
 namespace pink {
 
@@ -184,7 +189,11 @@ void *WorkerThread::ThreadMain() {
         }
 
         if ((pfe->mask & EPOLLOUT) && in_conn->is_reply()) {
+          auto starttime = std::chrono::high_resolution_clock::now();
           WriteStatus write_status = in_conn->SendReply();
+          auto endtime = std::chrono::high_resolution_clock::now();
+          auto metric = std::chrono::duration_cast<std::chrono::microseconds>(endtime - starttime).count();
+          g_pika_cmd_histogram_manager->Add_Histogram_Metric(slash::StringToLower(in_conn->command_name), metric, Response);
           in_conn->set_last_interaction(now);
           if (write_status == kWriteAll) {
             pink_epoll_->PinkModEvent(pconn, 0, EPOLLIN);

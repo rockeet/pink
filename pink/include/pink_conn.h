@@ -113,6 +113,8 @@ class PinkConn : public std::enable_shared_from_this<PinkConn> {
   }
 #endif
 
+  std::string command_name;
+
  private:
   int fd_;
   int flags_;

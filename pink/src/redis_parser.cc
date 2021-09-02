@@ -395,12 +395,14 @@ RedisParserStatus RedisParser::ProcessRequestBuffer() {
     // Reset
     ResetCommandStatus();
   }
+  cur_command=argvs_[0][0];
   if (parser_settings_.Complete) {
     if (parser_settings_.Complete(this, std::move(argvs_)) != 0) {
       SetParserStatus(kRedisParserError, kRedisParserCompleteError);
       return status_code_;
     }
   }
+
   argvs_.clear();
   SetParserStatus(kRedisParserDone);
   return status_code_; // OK
