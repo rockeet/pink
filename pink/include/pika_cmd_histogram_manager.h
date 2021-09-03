@@ -10,9 +10,10 @@
 #include "monitoring/histogram.h"
 
 enum process_step {
-  Parse=0,
-  Process=1,
-  Response=2,
+  Parse,
+  Schedule,
+  Process,
+  Response,
   StepMax,
 };
 
@@ -25,4 +26,5 @@ public:
 
 private:
   std::unordered_map<std::string, rocksdb::HistogramStat*> HistogramTable[StepMax];
+  std::vector<std::string> const step_str{"parse","schedule","process","response"};  //adpater process_step
 };

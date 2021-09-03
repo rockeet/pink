@@ -16,6 +16,7 @@
 #include "slash/include/xdebug.h"
 #include "slash/include/slash_string.h"
 #include "pink/include/pika_cmd_histogram_manager.h"
+#include "terark/util/profiling.hpp"
 
 extern PikaCmdHistogramManager* g_pika_cmd_histogram_manager;
 
@@ -76,7 +77,9 @@ ReadStatus RedisConn::ParseRedisParserStatus(RedisParserStatus status) {
   }
 }
 
+static terark::profiling pf;
 ReadStatus RedisConn::GetRequest() {
+  long long starttime = pf.now();
   ssize_t nread = 0;
   int next_read_pos = last_read_pos_ + 1;
 
@@ -123,11 +126,10 @@ ReadStatus RedisConn::GetRequest() {
   }
 
   int processed_len = 0;
-  auto starttime = std::chrono::high_resolution_clock::now();
   RedisParserStatus ret = redis_parser_.ProcessInputBuffer(
       rbuf_ + next_read_pos, nread, &processed_len);
-  auto endtime = std::chrono::high_resolution_clock::now();
-  auto metric = std::chrono::duration_cast<std::chrono::microseconds>(endtime - starttime).count();
+  long long endtime = pf.now();
+  auto metric = pf.us(starttime,endtime);
   if (ret == kRedisParserDone && !redis_parser_.cur_command.empty()) {
     g_pika_cmd_histogram_manager->Add_Histogram_Metric(slash::StringToLower(redis_parser_.cur_command), metric, Parse);
     command_name = redis_parser_.cur_command;

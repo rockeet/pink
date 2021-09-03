@@ -31,7 +31,6 @@ void PikaCmdHistogramManager::Add_Histogram_Metric(const std::string &name, long
 
 std::string PikaCmdHistogramManager::get_metric() {
   std::ostringstream oss;
-  std::vector<std::string> const step_str{"parse","process","response"};
   for(int step = 0; step < StepMax; step++) {
     auto Histogram = HistogramTable[step];
     for (auto const &iter:Histogram) {
@@ -49,6 +48,7 @@ std::string PikaCmdHistogramManager::get_metric() {
       oss<<"pika_cost_time_bucket{"<<"name=\""<<name<<"\" step=\""<<step_str[step]<<"\" le=\"+Inf\"} "<<last<<"\n";
       oss<<"pika_cost_time_count{"<<"name=\""<<name<<"\" step=\""<<step_str[step]<<"\"} "<<last<<"\n";
       oss<<"pika_cost_time_sum{"<<"name=\""<<name<<"\" step=\""<<step_str[step]<<"\"} "<<iter.second->sum_<<"\n";
+      oss<<"pika_cost_time_max_bucket{"<<"name=\""<<name<<"\" step=\""<<step_str[step]<<"\"} "<<std::to_string(bucketMapper.BucketLimit(limit))<<"\n";
     }
   }
 
