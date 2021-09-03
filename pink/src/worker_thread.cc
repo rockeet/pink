@@ -196,7 +196,7 @@ void *WorkerThread::ThreadMain() {
           WriteStatus write_status = in_conn->SendReply();
           long long endtime = pf.now();
           auto metric = pf.us(starttime,endtime);
-          g_pika_cmd_histogram_manager->Add_Histogram_Metric(slash::StringToLower(in_conn->command_name), metric, Response);
+          g_pika_cmd_histogram_manager->Add_Histogram_Metric(slash::StringToLower(in_conn->cur_command), metric, Response);
           in_conn->set_last_interaction(now);
           if (write_status == kWriteAll) {
             pink_epoll_->PinkModEvent(pconn, 0, EPOLLIN);

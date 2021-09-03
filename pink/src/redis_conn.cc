@@ -132,7 +132,7 @@ ReadStatus RedisConn::GetRequest() {
   auto metric = pf.us(starttime,endtime);
   if (ret == kRedisParserDone && !redis_parser_.cur_command.empty()) {
     g_pika_cmd_histogram_manager->Add_Histogram_Metric(slash::StringToLower(redis_parser_.cur_command), metric, Parse);
-    command_name = redis_parser_.cur_command;
+    cur_command = redis_parser_.cur_command;
   }
   ReadStatus read_status = ParseRedisParserStatus(ret);
   if (read_status == kReadAll || read_status == kReadHalf) {
