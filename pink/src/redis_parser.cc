@@ -34,7 +34,7 @@ static int HexDigitToInt32(char ch) {
 
 static int split2args(const char* req_buf, RedisCmdArgsType& argv) {
   const char *p = req_buf;
-  std::string arg;
+  dstring arg;
 
   while (1) {
     // skip blanks

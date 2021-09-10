@@ -17,8 +17,6 @@
 
 namespace pink {
 
-typedef std::vector<std::string> RedisCmdArgsType;
-
 enum HandleType {
   kSynchronous,
   kAsynchronous

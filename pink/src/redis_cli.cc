@@ -241,8 +241,7 @@ int RedisCli::ProcessLineItem() {
     return REDIS_HALF;
   }
 
-  std::string arg(p, len);
-  argv_.push_back(arg);
+  argv_.emplace_back(p, len);
   elements_--;
 
   return REDIS_OK;
@@ -266,7 +265,7 @@ int RedisCli::ProcessBulkItem() {
       rbuf_offset_ -= bytelen;
       return REDIS_OK;
     } else if (len + 2 <= rbuf_offset_) {
-      argv_.push_back(std::string(p + bytelen, len));
+      argv_.emplace_back(p + bytelen, len);
       elements_--;
 
       bytelen += len + 2;   /* include \r\n */
@@ -595,7 +594,7 @@ int redisvAppendCommand(std::string *cmd, const char *format, va_list ap) {
 }
 
 
-int redisFormatCommandArgv(RedisCmdArgsType argv, std::string *cmd) {
+int redisFormatCommandArgv(const RedisCmdArgsType& argv, std::string *cmd) {
   size_t argc = argv.size();
 
   int totlen = 1 + intlen(argc) + 2;
@@ -628,7 +627,7 @@ int SerializeRedisCommand(std::string *cmd, const char *format, ...) {
   return result;
 }
 
-int SerializeRedisCommand(RedisCmdArgsType argv, std::string *cmd)  {
+int SerializeRedisCommand(const RedisCmdArgsType& argv, std::string *cmd)  {
   return redisFormatCommandArgv(argv, cmd);
 }
 

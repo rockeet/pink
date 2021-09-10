@@ -10,6 +10,13 @@
 
 #include <vector>
 
+#if 0
+  #include <folly/FBString.h>
+  using dstring = folly::fbstring;
+#else
+  using dstring = std::string;
+#endif
+
 #define REDIS_PARSER_REQUEST 1
 #define REDIS_PARSER_RESPONSE 2
 
@@ -17,7 +24,7 @@ namespace pink {
 
 class RedisParser;
 
-typedef std::vector<std::string> RedisCmdArgsType;
+typedef std::vector<dstring> RedisCmdArgsType;
 typedef int (*RedisParserDataCb) (RedisParser*, const RedisCmdArgsType&);
 typedef int (*RedisParserMultiDataCb) (RedisParser*, std::vector<RedisCmdArgsType>&&);
 typedef int (*RedisParserCb) (RedisParser*);

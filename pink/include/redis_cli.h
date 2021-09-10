@@ -8,11 +8,10 @@
 
 #include <vector>
 #include <string>
+#include "redis_parser.h"
 
 namespace pink {
 
-
-typedef std::vector<std::string> RedisCmdArgsType;
 // We can serialize redis command by 2 ways:
 // 1. by variable argmuments;
 //    eg.  RedisCli::Serialize(cmd, "set %s %d", "key", 5);
@@ -21,7 +20,7 @@ typedef std::vector<std::string> RedisCmdArgsType;
 //    eg.  RedisCli::Serialize(argv, cmd);
 //        also cmd will be set as the result string.
 extern int SerializeRedisCommand(std::string *cmd, const char *format, ...);
-extern int SerializeRedisCommand(RedisCmdArgsType argv, std::string *cmd);
+extern int SerializeRedisCommand(const RedisCmdArgsType& argv, std::string *cmd);
 
 }   // namespace pink
 
