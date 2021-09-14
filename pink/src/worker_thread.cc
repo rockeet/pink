@@ -4,7 +4,6 @@
 // of patent rights can be found in the PATENTS file in the same directory.
 
 #include <vector>
-#include <chrono>
 
 #include "pink/src/worker_thread.h"
 

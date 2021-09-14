@@ -7,6 +7,7 @@
 #include <sys/syscall.h>
 #include <glog/logging.h>
 
+#include "terark/num_to_str.hpp"
 #include "pink/include/pika_cmd_histogram_manager.h"
 
 static const rocksdb::HistogramBucketMapper bucketMapper;
@@ -29,7 +30,7 @@ void PikaCmdHistogramManager::Add_Histogram_Metric(const std::string &name, long
 }
 
 std::string PikaCmdHistogramManager::get_metric() {
-  std::ostringstream oss;
+  terark::string_appender<> oss;
   for(int step = 0; step < StepMax; step++) {
     auto Histogram = HistogramTable[step];
     for (auto const &iter:Histogram) {
@@ -42,12 +43,12 @@ std::string PikaCmdHistogramManager::get_metric() {
       }
       for (size_t i = 0; i <= limit; i++) {
         last += buckets[i].cnt;
-        oss<<"pika_cost_time_bucket{"<<"name=\""<<name<<"\" step=\""<<step_str[step]<<"\" le=\""<<std::to_string(bucketMapper.BucketLimit(i))<<"\"} "<<last<<"\n";
+        oss<<"pika_cost_time_bucket{"<<"name=\""<<name<<"\" step=\""<<step_str[step]<<"\" le=\""<<bucketMapper.BucketLimit(i)<<"\"} "<<last<<"\n";
       }
       oss<<"pika_cost_time_bucket{"<<"name=\""<<name<<"\" step=\""<<step_str[step]<<"\" le=\"+Inf\"} "<<last<<"\n";
       oss<<"pika_cost_time_count{"<<"name=\""<<name<<"\" step=\""<<step_str[step]<<"\"} "<<last<<"\n";
       oss<<"pika_cost_time_sum{"<<"name=\""<<name<<"\" step=\""<<step_str[step]<<"\"} "<<iter.second->sum_<<"\n";
-      oss<<"pika_cost_time_max_bucket{"<<"name=\""<<name<<"\" step=\""<<step_str[step]<<"\"} "<<std::to_string(bucketMapper.BucketLimit(limit))<<"\n";
+      oss<<"pika_cost_time_max_bucket{"<<"name=\""<<name<<"\" step=\""<<step_str[step]<<"\"} "<<bucketMapper.BucketLimit(limit)<<"\n";
     }
   }
 

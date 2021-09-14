@@ -7,6 +7,7 @@
 
 #include <unordered_map>
 #include <string>
+#include "terark/fstring.hpp"
 #include "monitoring/histogram.h"
 
 enum process_step {
@@ -26,5 +27,5 @@ public:
 
 private:
   std::unordered_map<std::string, rocksdb::HistogramStat*> HistogramTable[StepMax];
-  std::vector<std::string> const step_str{"parse","schedule","process","response"};  //adpater process_step
+  std::vector<terark::fstring> const step_str{"parse","schedule","process","response"};  //adpater process_step
 };
