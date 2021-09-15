@@ -7,19 +7,23 @@
 #include <sys/syscall.h>
 #include <glog/logging.h>
 
+#include "terark/util/profiling.hpp"
 #include "terark/num_to_str.hpp"
-#include "pink/include/pika_cmd_histogram_manager.h"
+#include "slash/include/slash_string.h"
+#include "pink/include/pika_run_cmd_histogram.h"
 
 static const rocksdb::HistogramBucketMapper bucketMapper;
 
-void PikaCmdHistogramManager::Add_Histogram(const std::string &name) {
+namespace cmd_run_histogram {
+
+void PikaCmdRunHistogram::Add_Histogram(const std::string &name) {
   for (int i =0; i < StepMax; i++) {
     HistogramTable[i][name] = new rocksdb::HistogramStat();
     HistogramTable[i][name]->Clear();
   }
 };
 
-void PikaCmdHistogramManager::Add_Histogram_Metric(const std::string &name, long value, process_step step) {
+void PikaCmdRunHistogram::Add_Histogram_Metric(const std::string &name, uint64_t value, process_step step) {
   assert(step<StepMax);
   auto iter = HistogramTable[step].find(name);
   if (iter == HistogramTable[step].end()) {
@@ -29,7 +33,21 @@ void PikaCmdHistogramManager::Add_Histogram_Metric(const std::string &name, long
   iter->second->Add(value);
 }
 
-std::string PikaCmdHistogramManager::get_metric() {
+static terark::profiling pf;
+
+void PikaCmdRunHistogram::Add_Histogram_Metric(statistics_info &info) {
+  for (auto &cmdinfo:info.cmd_process_times) {
+    slash::StringToLower(cmdinfo.cmd);
+    Add_Histogram_Metric(cmdinfo.cmd, pf.us(info.read_start_time, info.parse_end_time), Parse);
+    Add_Histogram_Metric(cmdinfo.cmd, pf.us(info.parse_end_time, info.schdule_end_time), Schedule);
+    Add_Histogram_Metric(cmdinfo.cmd, pf.us(cmdinfo.start_time, cmdinfo.end_time), Process);
+    Add_Histogram_Metric(cmdinfo.cmd, pf.us(cmdinfo.end_time, info.response_end_time), Response);
+    Add_Histogram_Metric(cmdinfo.cmd, pf.us(info.read_start_time, info.response_end_time), All);
+  }
+  info.cmd_process_times.clear();
+}
+
+std::string PikaCmdRunHistogram::get_metric() {
   terark::string_appender<> oss;
   for(int step = 0; step < StepMax; step++) {
     auto Histogram = HistogramTable[step];
@@ -54,3 +72,6 @@ std::string PikaCmdHistogramManager::get_metric() {
 
   return oss.str();
 }
+
+} //end cmd_run_histogram
+

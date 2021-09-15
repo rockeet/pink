@@ -14,10 +14,10 @@
 #include "terark/stdtypes.hpp"
 #include "terark/util/function.hpp"
 #include "slash/include/slash_string.h"
-#include "pink/include/pika_cmd_histogram_manager.h"
+#include "pink/include/pika_run_cmd_histogram.h"
 #include "terark/util/profiling.hpp"
 
-extern PikaCmdHistogramManager* g_pika_cmd_histogram_manager;
+extern cmd_run_histogram::PikaCmdRunHistogram* g_pika_run_cmd_histogram;
 
 namespace pink {
 
@@ -191,11 +191,9 @@ void *WorkerThread::ThreadMain() {
         }
 
         if ((pfe->mask & EPOLLOUT) && in_conn->is_reply()) {
-          long long starttime = pf.now();
           WriteStatus write_status = in_conn->SendReply();
-          long long endtime = pf.now();
-          auto metric = pf.us(starttime,endtime);
-          g_pika_cmd_histogram_manager->Add_Histogram_Metric(slash::StringToLower(in_conn->cur_command), metric, Response);
+          in_conn->metric_info.response_end_time = pf.now();
+          g_pika_run_cmd_histogram->Add_Histogram_Metric(in_conn->metric_info);
           in_conn->set_last_interaction(now);
           if (write_status == kWriteAll) {
             pink_epoll_->PinkModEvent(pconn, 0, EPOLLIN);
@@ -208,6 +206,7 @@ void *WorkerThread::ThreadMain() {
         }
 
         if (!should_close && (pfe->mask & EPOLLIN)) {
+          in_conn->metric_info.read_start_time = pf.now();
           ReadStatus read_status = in_conn->GetRequest();
           in_conn->set_last_interaction(now);
           if (read_status == kReadAll) {
