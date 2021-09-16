@@ -45,7 +45,7 @@ public:
 
 private:
   std::unordered_map<std::string, rocksdb::HistogramStat*> HistogramTable[StepMax];
-  std::vector<terark::fstring> const step_str{"parse","schedule","process","response","all"};  //adpater process_step
+  const terark::fstring step_str[5] = {"parse","schedule","process","response","all"};  //adpater process_step
 };
 
 } // end cmd_run_histogram

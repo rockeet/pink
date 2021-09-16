@@ -56,7 +56,8 @@ std::string PikaCmdRunHistogram::get_metric() {
       u_int64_t last = 0;
       auto const &name = iter.first;
       size_t limit = 0;
-      for (size_t i = bucketMapper.BucketCount() - 1; i > 0; i--) {
+      for (size_t i = bucketMapper.BucketCount(); i; ) {
+        i--;
         if (buckets[i].cnt > 0) { limit = i; break; }
       }
       for (size_t i = 0; i <= limit; i++) {
