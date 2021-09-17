@@ -18,6 +18,8 @@
 #include "pink/include/server_thread.h"
 #include "pink/src/pink_epoll.h"
 
+#include "pink/include/pika_cmd_time_histogram.h"
+
 namespace pink {
 
 class Thread;
@@ -112,6 +114,8 @@ class PinkConn : public std::enable_shared_from_this<PinkConn> {
     return ssl_ != nullptr;
   }
 #endif
+
+  time_histogram::CmdTimeInfo metric_info;
 
  private:
   int fd_;

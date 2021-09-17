@@ -13,6 +13,11 @@
 
 #include "terark/stdtypes.hpp"
 #include "terark/util/function.hpp"
+#include "slash/include/slash_string.h"
+#include "pink/include/pika_cmd_time_histogram.h"
+#include "terark/util/profiling.hpp"
+
+extern time_histogram::PikaCmdRunTimeHistogram* g_pika_cmd_run_time_histogram;
 
 namespace pink {
 
@@ -81,6 +86,8 @@ bool WorkerThread::MoveConnIn(const std::shared_ptr<PinkConn>& conn, NotifyType 
 bool WorkerThread::MoveConnIn(PinkItem&& it, bool force) {
   return pink_epoll_->Register(std::move(it), force);
 }
+
+static terark::profiling pf;
 
 void *WorkerThread::ThreadMain() {
   std::vector<PinkItem> bb(64);
@@ -185,6 +192,8 @@ void *WorkerThread::ThreadMain() {
 
         if ((pfe->mask & EPOLLOUT) && in_conn->is_reply()) {
           WriteStatus write_status = in_conn->SendReply();
+          in_conn->metric_info.response_end_time = pf.now();
+          g_pika_cmd_run_time_histogram->AddTimeMetric(in_conn->metric_info);
           in_conn->set_last_interaction(now);
           if (write_status == kWriteAll) {
             pink_epoll_->PinkModEvent(pconn, 0, EPOLLIN);
@@ -197,6 +206,7 @@ void *WorkerThread::ThreadMain() {
         }
 
         if (!should_close && (pfe->mask & EPOLLIN)) {
+          in_conn->metric_info.read_start_time = pf.now();
           ReadStatus read_status = in_conn->GetRequest();
           in_conn->set_last_interaction(now);
           if (read_status == kReadAll) {
