@@ -115,7 +115,7 @@ class PinkConn : public std::enable_shared_from_this<PinkConn> {
   }
 #endif
 
-  cmd_run_time_histogram::statistics_info metric_info;
+  time_histogram::CmdTimeInfo metric_info;
 
  private:
   int fd_;

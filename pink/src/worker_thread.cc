@@ -17,7 +17,7 @@
 #include "pink/include/pika_cmd_time_histogram.h"
 #include "terark/util/profiling.hpp"
 
-extern cmd_run_time_histogram::PikaCmdRunTimeHistogram* g_pika_cmd_run_time_histogram;
+extern time_histogram::PikaCmdRunTimeHistogram* g_pika_cmd_run_time_histogram;
 
 namespace pink {
 
@@ -193,7 +193,7 @@ void *WorkerThread::ThreadMain() {
         if ((pfe->mask & EPOLLOUT) && in_conn->is_reply()) {
           WriteStatus write_status = in_conn->SendReply();
           in_conn->metric_info.response_end_time = pf.now();
-          g_pika_cmd_run_time_histogram->Add_Histogram_Metric(in_conn->metric_info);
+          g_pika_cmd_run_time_histogram->AddTimeMetric(in_conn->metric_info);
           in_conn->set_last_interaction(now);
           if (write_status == kWriteAll) {
             pink_epoll_->PinkModEvent(pconn, 0, EPOLLIN);

@@ -14,16 +14,16 @@
 
 static const rocksdb::HistogramBucketMapper bucketMapper;
 
-namespace cmd_run_time_histogram {
+namespace time_histogram {
 
-void PikaCmdRunTimeHistogram::Add_Histogram(const std::string &name) {
+void PikaCmdRunTimeHistogram::AddHistogram(const std::string &name) {
   for (int i =0; i < StepMax; i++) {
     HistogramTable[i][name] = new rocksdb::HistogramStat();
     HistogramTable[i][name]->Clear();
   }
 };
 
-void PikaCmdRunTimeHistogram::Add_Histogram_Metric(const std::string &name, uint64_t value, process_step step) {
+void PikaCmdRunTimeHistogram::AddTimeMetric(const std::string &name, uint64_t value, CmdProcessStep step) {
   assert(step<StepMax);
   auto iter = HistogramTable[step].find(name);
   if (iter == HistogramTable[step].end()) {
@@ -35,19 +35,19 @@ void PikaCmdRunTimeHistogram::Add_Histogram_Metric(const std::string &name, uint
 
 static terark::profiling pf;
 
-void PikaCmdRunTimeHistogram::Add_Histogram_Metric(statistics_info &info) {
+void PikaCmdRunTimeHistogram::AddTimeMetric(CmdTimeInfo &info) {
   for (auto &cmdinfo:info.cmd_process_times) {
     slash::StringToLower(cmdinfo.cmd);
-    Add_Histogram_Metric(cmdinfo.cmd, pf.us(info.read_start_time, info.parse_end_time), Parse);
-    Add_Histogram_Metric(cmdinfo.cmd, pf.us(info.parse_end_time, info.schdule_end_time), Schedule);
-    Add_Histogram_Metric(cmdinfo.cmd, pf.us(cmdinfo.start_time, cmdinfo.end_time), Process);
-    Add_Histogram_Metric(cmdinfo.cmd, pf.us(cmdinfo.end_time, info.response_end_time), Response);
-    Add_Histogram_Metric(cmdinfo.cmd, pf.us(info.read_start_time, info.response_end_time), All);
+    AddTimeMetric(cmdinfo.cmd, pf.us(info.read_start_time, info.parse_end_time), Parse);
+    AddTimeMetric(cmdinfo.cmd, pf.us(info.parse_end_time, info.schdule_end_time), Schedule);
+    AddTimeMetric(cmdinfo.cmd, pf.us(cmdinfo.start_time, cmdinfo.end_time), Process);
+    AddTimeMetric(cmdinfo.cmd, pf.us(cmdinfo.end_time, info.response_end_time), Response);
+    AddTimeMetric(cmdinfo.cmd, pf.us(info.read_start_time, info.response_end_time), All);
   }
   info.cmd_process_times.clear();
 }
 
-std::string PikaCmdRunTimeHistogram::get_metric() {
+std::string PikaCmdRunTimeHistogram::GetTimeMetric() {
   terark::string_appender<> oss;
   for(int step = 0; step < StepMax; step++) {
     auto Histogram = HistogramTable[step];
@@ -74,5 +74,5 @@ std::string PikaCmdRunTimeHistogram::get_metric() {
   return oss.str();
 }
 
-} //end cmd_run_time_histogram
+} //end time_histogram
 

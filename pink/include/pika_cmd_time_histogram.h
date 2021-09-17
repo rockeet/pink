@@ -10,9 +10,9 @@
 #include "terark/fstring.hpp"
 #include "monitoring/histogram.h"
 
-namespace cmd_run_time_histogram {
+namespace time_histogram {
 
-enum process_step {
+enum CmdProcessStep {
   Parse,
   Schedule,
   Process,
@@ -21,31 +21,31 @@ enum process_step {
   StepMax,
 };
 
-struct cmd_process_time {
-  cmd_process_time(std::string const c, uint64_t st, uint64_t et):cmd(c), start_time(st), end_time(et){};
+struct CmdProcessTime {
+  CmdProcessTime(std::string const c, uint64_t st, uint64_t et):cmd(c), start_time(st), end_time(et){};
   std::string cmd;
   uint64_t start_time;
   uint64_t end_time;
 };
-struct statistics_info {
+struct CmdTimeInfo {
   uint64_t read_start_time;
   uint64_t parse_end_time;
   uint64_t schdule_end_time;
   uint64_t response_end_time;
-  std::vector<cmd_process_time> cmd_process_times;
+  std::vector<CmdProcessTime> cmd_process_times;
 };
 
 class PikaCmdRunTimeHistogram {
 public:
   PikaCmdRunTimeHistogram() {};
-  void Add_Histogram(const std::string &name);
-  void Add_Histogram_Metric(const std::string &name, uint64_t value, process_step step);
-  void Add_Histogram_Metric(statistics_info &info);
-  std::string get_metric();
+  void AddHistogram(const std::string &name);
+  void AddTimeMetric(const std::string &name, uint64_t value, CmdProcessStep step);
+  void AddTimeMetric(CmdTimeInfo &info);
+  std::string GetTimeMetric();
 
 private:
   std::unordered_map<std::string, rocksdb::HistogramStat*> HistogramTable[StepMax];
   const terark::fstring step_str[StepMax] = {"parse","schedule","process","response","all"};
 };
 
-} // end cmd_run_time_histogram
+} // end time_histogram
