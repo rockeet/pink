@@ -10,7 +10,7 @@
 #include "terark/fstring.hpp"
 #include "monitoring/histogram.h"
 
-namespace cmd_run_histogram {
+namespace cmd_run_time_histogram {
 
 enum process_step {
   Parse,
@@ -35,9 +35,9 @@ struct statistics_info {
   std::vector<cmd_process_time> cmd_process_times;
 };
 
-class PikaCmdRunHistogram {
+class PikaCmdRunTimeHistogram {
 public:
-  PikaCmdRunHistogram() {};
+  PikaCmdRunTimeHistogram() {};
   void Add_Histogram(const std::string &name);
   void Add_Histogram_Metric(const std::string &name, uint64_t value, process_step step);
   void Add_Histogram_Metric(statistics_info &info);
@@ -45,7 +45,7 @@ public:
 
 private:
   std::unordered_map<std::string, rocksdb::HistogramStat*> HistogramTable[StepMax];
-  const terark::fstring step_str[5] = {"parse","schedule","process","response","all"};  //adpater process_step
+  const terark::fstring step_str[StepMax] = {"parse","schedule","process","response","all"};
 };
 
-} // end cmd_run_histogram
+} // end cmd_run_time_histogram

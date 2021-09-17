@@ -10,20 +10,20 @@
 #include "terark/util/profiling.hpp"
 #include "terark/num_to_str.hpp"
 #include "slash/include/slash_string.h"
-#include "pink/include/pika_run_cmd_histogram.h"
+#include "pink/include/pika_cmd_time_histogram.h"
 
 static const rocksdb::HistogramBucketMapper bucketMapper;
 
-namespace cmd_run_histogram {
+namespace cmd_run_time_histogram {
 
-void PikaCmdRunHistogram::Add_Histogram(const std::string &name) {
+void PikaCmdRunTimeHistogram::Add_Histogram(const std::string &name) {
   for (int i =0; i < StepMax; i++) {
     HistogramTable[i][name] = new rocksdb::HistogramStat();
     HistogramTable[i][name]->Clear();
   }
 };
 
-void PikaCmdRunHistogram::Add_Histogram_Metric(const std::string &name, uint64_t value, process_step step) {
+void PikaCmdRunTimeHistogram::Add_Histogram_Metric(const std::string &name, uint64_t value, process_step step) {
   assert(step<StepMax);
   auto iter = HistogramTable[step].find(name);
   if (iter == HistogramTable[step].end()) {
@@ -35,7 +35,7 @@ void PikaCmdRunHistogram::Add_Histogram_Metric(const std::string &name, uint64_t
 
 static terark::profiling pf;
 
-void PikaCmdRunHistogram::Add_Histogram_Metric(statistics_info &info) {
+void PikaCmdRunTimeHistogram::Add_Histogram_Metric(statistics_info &info) {
   for (auto &cmdinfo:info.cmd_process_times) {
     slash::StringToLower(cmdinfo.cmd);
     Add_Histogram_Metric(cmdinfo.cmd, pf.us(info.read_start_time, info.parse_end_time), Parse);
@@ -47,7 +47,7 @@ void PikaCmdRunHistogram::Add_Histogram_Metric(statistics_info &info) {
   info.cmd_process_times.clear();
 }
 
-std::string PikaCmdRunHistogram::get_metric() {
+std::string PikaCmdRunTimeHistogram::get_metric() {
   terark::string_appender<> oss;
   for(int step = 0; step < StepMax; step++) {
     auto Histogram = HistogramTable[step];
@@ -74,5 +74,5 @@ std::string PikaCmdRunHistogram::get_metric() {
   return oss.str();
 }
 
-} //end cmd_run_histogram
+} //end cmd_run_time_histogram
 

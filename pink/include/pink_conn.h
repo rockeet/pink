@@ -18,7 +18,7 @@
 #include "pink/include/server_thread.h"
 #include "pink/src/pink_epoll.h"
 
-#include "pink/include/pika_run_cmd_histogram.h"
+#include "pink/include/pika_cmd_time_histogram.h"
 
 namespace pink {
 
@@ -115,7 +115,7 @@ class PinkConn : public std::enable_shared_from_this<PinkConn> {
   }
 #endif
 
-  cmd_run_histogram::statistics_info metric_info;
+  cmd_run_time_histogram::statistics_info metric_info;
 
  private:
   int fd_;
