@@ -17,7 +17,7 @@
 #include "pink/include/pika_cmd_time_histogram.h"
 #include "terark/util/profiling.hpp"
 
-extern time_histogram::PikaCmdRunTimeHistogram* g_pika_cmd_run_time_histogram;
+auto g_pika_cmd_run_time_histogram = new time_histogram::PikaCmdRunTimeHistogram();
 
 namespace pink {
 
