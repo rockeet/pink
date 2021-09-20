@@ -16,33 +16,29 @@ static const rocksdb::HistogramBucketMapper bucketMapper;
 
 namespace time_histogram {
 
-void PikaCmdRunTimeHistogram::AddHistogram(const std::string &name) {
-  for (int i =0; i < StepMax; i++) {
-    HistogramTable[i][name] = new rocksdb::HistogramStat();
-    HistogramTable[i][name]->Clear();
+void PikaCmdRunTimeHistogram::AddHistogram(const fstring& name) {
+  size_t cmd_idx = m_get_idx(name);
+  for (int i = 0; i < StepMax; i++) {
+    HistogramTable[cmd_idx][i] = new rocksdb::HistogramStat();
+    HistogramTable[cmd_idx][i]->Clear();
   }
 };
 
-void PikaCmdRunTimeHistogram::AddTimeMetric(const std::string &name, uint64_t value, CmdProcessStep step) {
+void PikaCmdRunTimeHistogram::AddTimeMetric(size_t cmd_idx, uint64_t value, CmdProcessStep step) {
   assert(step<StepMax);
-  auto iter = HistogramTable[step].find(name);
-  if (iter == HistogramTable[step].end()) {
-    LOG(ERROR) << "command:" << name << " step:" << (unsigned int)step << " don't have Histogram";
-    return;
-  }
-  iter->second->Add(value);
+  TERARK_VERIFY_LT(cmd_idx, HistogramNum);
+  HistogramTable[cmd_idx][step]->Add(value);
 }
 
 static terark::profiling pf;
 
-void PikaCmdRunTimeHistogram::AddTimeMetric(CmdTimeInfo &info) {
-  for (auto &cmdinfo:info.cmd_process_times) {
-    slash::StringToLower(cmdinfo.cmd);
-    AddTimeMetric(cmdinfo.cmd, pf.us(info.read_start_time, info.parse_end_time), Parse);
-    AddTimeMetric(cmdinfo.cmd, pf.us(info.parse_end_time, info.schdule_end_time), Schedule);
-    AddTimeMetric(cmdinfo.cmd, pf.us(cmdinfo.start_time, cmdinfo.end_time), Process);
-    AddTimeMetric(cmdinfo.cmd, pf.us(cmdinfo.end_time, info.response_end_time), Response);
-    AddTimeMetric(cmdinfo.cmd, pf.us(info.read_start_time, info.response_end_time), All);
+void PikaCmdRunTimeHistogram::AddTimeMetric(CmdTimeInfo& info) {
+  for (auto& cmdinfo: info.cmd_process_times) {
+    AddTimeMetric(cmdinfo.cmd_idx, pf.us(info.read_start_time, info.parse_end_time), Parse);
+    AddTimeMetric(cmdinfo.cmd_idx, pf.us(info.parse_end_time, info.schdule_end_time), Schedule);
+    AddTimeMetric(cmdinfo.cmd_idx, pf.us(cmdinfo.start_time, cmdinfo.end_time), Process);
+    AddTimeMetric(cmdinfo.cmd_idx, pf.us(cmdinfo.end_time, info.response_end_time), Response);
+    AddTimeMetric(cmdinfo.cmd_idx, pf.us(info.read_start_time, info.response_end_time), All);
   }
   info.cmd_process_times.clear();
 }
@@ -50,11 +46,11 @@ void PikaCmdRunTimeHistogram::AddTimeMetric(CmdTimeInfo &info) {
 std::string PikaCmdRunTimeHistogram::GetTimeMetric() {
   terark::string_appender<> oss;
   for(int step = 0; step < StepMax; step++) {
-    auto Histogram = HistogramTable[step];
-    for (auto const &iter:Histogram) {
-      auto &buckets = iter.second->buckets_;
-      u_int64_t last = 0;
-      auto const &name = iter.first;
+    for (size_t i = 0; i < HistogramNum; ++i) {
+      auto* histogram = HistogramTable[i][step];
+      auto& buckets = histogram->buckets_;
+      fstring name = m_get_name(i);
+      uint64_t last = 0;
       size_t limit = 0;
       for (size_t i = bucketMapper.BucketCount(); i; ) {
         i--;
@@ -66,12 +62,12 @@ std::string PikaCmdRunTimeHistogram::GetTimeMetric() {
       }
       oss<<"pika_cost_time_bucket{"<<"name=\""<<name<<"\" step=\""<<step_str[step]<<"\" le=\"+Inf\"} "<<last<<"\n";
       oss<<"pika_cost_time_count{"<<"name=\""<<name<<"\" step=\""<<step_str[step]<<"\"} "<<last<<"\n";
-      oss<<"pika_cost_time_sum{"<<"name=\""<<name<<"\" step=\""<<step_str[step]<<"\"} "<<iter.second->sum_<<"\n";
+      oss<<"pika_cost_time_sum{"<<"name=\""<<name<<"\" step=\""<<step_str[step]<<"\"} "<<histogram->sum_<<"\n";
       oss<<"pika_cost_time_max_bucket{"<<"name=\""<<name<<"\" step=\""<<step_str[step]<<"\"} "<<bucketMapper.BucketLimit(limit)<<"\n";
     }
   }
 
-  return oss.str();
+  return std::move(oss);
 }
 
 } //end time_histogram

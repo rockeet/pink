@@ -12,6 +12,8 @@
 
 namespace time_histogram {
 
+using terark::fstring;
+
 enum CmdProcessStep {
   Parse,
   Schedule,
@@ -22,8 +24,7 @@ enum CmdProcessStep {
 };
 
 struct CmdProcessTime {
-  CmdProcessTime(std::string const c, uint64_t st, uint64_t et):cmd(c), start_time(st), end_time(et){};
-  std::string cmd;
+  size_t cmd_idx;
   uint64_t start_time;
   uint64_t end_time;
 };
@@ -38,13 +39,15 @@ struct CmdTimeInfo {
 class PikaCmdRunTimeHistogram {
 public:
   PikaCmdRunTimeHistogram() {};
-  void AddHistogram(const std::string &name);
-  void AddTimeMetric(const std::string &name, uint64_t value, CmdProcessStep step);
-  void AddTimeMetric(CmdTimeInfo &info);
+  void AddHistogram(const fstring& name);
+  void AddTimeMetric(CmdTimeInfo& info);
   std::string GetTimeMetric();
-
+  size_t  (*m_get_idx)(fstring) = nullptr;
+  fstring (*m_get_name)(size_t) = nullptr;
+  static constexpr size_t HistogramNum = 149;
 private:
-  std::unordered_map<std::string, rocksdb::HistogramStat*> HistogramTable[StepMax];
+  void AddTimeMetric(size_t cmd_idx, uint64_t value, CmdProcessStep step);
+  rocksdb::HistogramStat* HistogramTable[HistogramNum][StepMax];
   const terark::fstring step_str[StepMax] = {"parse","schedule","process","response","all"};
 };
 

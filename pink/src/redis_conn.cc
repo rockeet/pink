@@ -207,7 +207,7 @@ HandleType RedisConn::GetHandleType() {
   return handle_type_;
 }
 
-void RedisConn::ProcessRedisCmds(const std::vector<RedisCmdArgsType>& argvs, bool async, std::string* response) {
+void RedisConn::ProcessRedisCmds(std::vector<RedisCmdArgsType>&& argvs, bool async, std::string* response) {
 }
 
 void RedisConn::NotifyEpoll(bool success) {
@@ -228,7 +228,7 @@ int RedisConn::ParserDealMessageCb(RedisParser* parser, const RedisCmdArgsType& 
 int RedisConn::ParserCompleteCb(RedisParser* parser, std::vector<RedisCmdArgsType>&& argvs) {
   RedisConn* conn = reinterpret_cast<RedisConn*>(parser->data);
   bool async = conn->GetHandleType() == HandleType::kAsynchronous;
-  conn->ProcessRedisCmds(argvs, async, &(conn->response_));
+  conn->ProcessRedisCmds(std::move(argvs), async, &(conn->response_));
   return 0;
 }
 
