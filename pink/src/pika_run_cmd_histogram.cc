@@ -16,14 +16,21 @@ static const rocksdb::HistogramBucketMapper bucketMapper;
 
 namespace time_histogram {
 
-void PikaCmdRunTimeHistogram::AddHistogram(const fstring& name) {
-  size_t cmd_idx = m_get_idx(name);
-  for (int i = 0; i < StepMax; i++) {
-    HistogramTable[cmd_idx][i] = new rocksdb::HistogramStat();
-    HistogramTable[cmd_idx][i]->Clear();
+PikaCmdRunTimeHistogram::PikaCmdRunTimeHistogram() {
+  for (size_t cmd_idx = 0; cmd_idx < HistogramNum; cmd_idx++) {
+    for (int i = 0; i < StepMax; i++) {
+      HistogramTable[cmd_idx][i] = new rocksdb::HistogramStat();
+      HistogramTable[cmd_idx][i]->Clear();
+    }
   }
-};
-
+}
+PikaCmdRunTimeHistogram::~PikaCmdRunTimeHistogram() {
+  for (size_t cmd_idx = 0; cmd_idx < HistogramNum; cmd_idx++) {
+    for (int i = 0; i < StepMax; i++) {
+      delete HistogramTable[cmd_idx][i];
+    }
+  }
+}
 void PikaCmdRunTimeHistogram::AddTimeMetric(size_t cmd_idx, uint64_t value, CmdProcessStep step) {
   assert(step<StepMax);
   TERARK_VERIFY_LT(cmd_idx, HistogramNum);

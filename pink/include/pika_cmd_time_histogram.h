@@ -38,11 +38,11 @@ struct CmdTimeInfo {
 
 class PikaCmdRunTimeHistogram {
 public:
-  PikaCmdRunTimeHistogram() {};
-  void AddHistogram(const fstring& name);
+  PikaCmdRunTimeHistogram();
+  ~PikaCmdRunTimeHistogram();
   void AddTimeMetric(CmdTimeInfo& info);
   std::string GetTimeMetric();
-  size_t  (*m_get_idx)(fstring) = nullptr;
+//size_t  (*m_get_idx)(fstring) = nullptr;
   fstring (*m_get_name)(size_t) = nullptr;
   static constexpr size_t HistogramNum = 149;
 private:

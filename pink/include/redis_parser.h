@@ -28,7 +28,7 @@ namespace pink {
 class RedisParser;
 
 struct RedisCmdArgsType : std::vector<dstring> {
-  mutable uint16_t cmd_idx = UINT16_MAX;
+  mutable size_t cmd_idx = UINT_MAX;
 };
 typedef int (*RedisParserDataCb) (RedisParser*, const RedisCmdArgsType&);
 typedef int (*RedisParserMultiDataCb) (RedisParser*, std::vector<RedisCmdArgsType>&&);
