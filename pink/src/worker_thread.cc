@@ -123,59 +123,53 @@ void *WorkerThread::ThreadMain() {
     auto pfe = pink_epoll_->firedevent();
     for (int i = 0; i < nfds; i++, pfe++) {
       if (pfe->fd == pink_epoll_->notify_receive_fd()) {
-        if (pfe->mask & EPOLLIN) {
-          int32_t nread = read(pink_epoll_->notify_receive_fd(), &bb[0], bb.size()*sizeof(PinkItem));
-          TERARK_VERIFY_AL(nread, sizeof(PinkItem));
-          nread /= sizeof(PinkItem);
-          if (nread <= 0) {
-            continue;
-          } else {
-            for (int32_t idx = 0; idx < nread; ++idx) {
-              //PinkItem ti = pink_epoll_->notify_queue_pop();
-              PinkItem& ti = bb[idx];
-              TERARK_SCOPE_EXIT(ti.kill_sp_conn());
-              if (ti.notify_type() == kNotiConnect) {
-                std::shared_ptr<PinkConn> tc = conn_factory_->NewPinkConn(
-                    ti.fd(), ti.ip_port(),
-                    server_thread_, private_data_, pink_epoll_);
-                if (!tc || !tc->SetNonblock()) {
-                  continue;
-                }
+        if (!(pfe->mask & EPOLLIN))
+          continue;
+        int32_t nread = read(pink_epoll_->notify_receive_fd(), &bb[0], bb.size()*sizeof(PinkItem));
+        TERARK_VERIFY_AL(nread, sizeof(PinkItem));
+        nread /= sizeof(PinkItem);
+        for (int32_t idx = 0; idx < nread; ++idx) {
+          //PinkItem ti = pink_epoll_->notify_queue_pop();
+          PinkItem& ti = bb[idx];
+          TERARK_SCOPE_EXIT(ti.kill_sp_conn());
+          if (ti.notify_type() == kNotiConnect) {
+            std::shared_ptr<PinkConn> tc = conn_factory_->NewPinkConn(
+                ti.fd(), ti.ip_port(),
+                server_thread_, private_data_, pink_epoll_);
+            if (!tc || !tc->SetNonblock()) {
+              continue;
+            }
 
 #ifdef __ENABLE_SSL
-                // Create SSL failed
-                if (server_thread_->security() &&
-                  !tc->CreateSSL(server_thread_->ssl_ctx())) {
-                  CloseFd(tc);
-                  continue;
-                }
+            // Create SSL failed
+            if (server_thread_->security() &&
+              !tc->CreateSSL(server_thread_->ssl_ctx())) {
+              CloseFd(tc);
+              continue;
+            }
 #endif
 
-                {
-                  slash::WriteLock l(&rwlock_);
-                  conns_[ti.fd()] = tc;
-                }
-                pink_epoll_->PinkAddEvent(tc.get(), EPOLLIN);
-              } else if (ti.notify_type() == kNotiClose) {
-                // should close?
-              } else if (ti.notify_type() == kNotiEpollout) {
-                assert(nullptr != ti.conn.get());
-                pink_epoll_->PinkModEvent(ti.conn.get(), 0, EPOLLOUT);
-              } else if (ti.notify_type() == kNotiEpollin) {
-                assert(nullptr != ti.conn.get());
-                pink_epoll_->PinkModEvent(ti.conn.get(), 0, EPOLLIN);
-              } else if (ti.notify_type() == kNotiEpolloutAndEpollin) {
-                assert(nullptr != ti.conn.get());
-                pink_epoll_->PinkModEvent(ti.conn.get(), 0, EPOLLOUT | EPOLLIN);
-              } else if (ti.notify_type() == kNotiWait) {
-                // do not register events
-                assert(nullptr != ti.conn.get());
-                pink_epoll_->PinkAddEvent(ti.conn.get(), 0);
-              }
+            {
+              slash::WriteLock l(&rwlock_);
+              conns_[ti.fd()] = tc;
             }
+            pink_epoll_->PinkAddEvent(tc.get(), EPOLLIN);
+          } else if (ti.notify_type() == kNotiClose) {
+            // should close?
+          } else if (ti.notify_type() == kNotiEpollout) {
+            assert(nullptr != ti.conn.get());
+            pink_epoll_->PinkModEvent(ti.conn.get(), 0, EPOLLOUT);
+          } else if (ti.notify_type() == kNotiEpollin) {
+            assert(nullptr != ti.conn.get());
+            pink_epoll_->PinkModEvent(ti.conn.get(), 0, EPOLLIN);
+          } else if (ti.notify_type() == kNotiEpolloutAndEpollin) {
+            assert(nullptr != ti.conn.get());
+            pink_epoll_->PinkModEvent(ti.conn.get(), 0, EPOLLOUT | EPOLLIN);
+          } else if (ti.notify_type() == kNotiWait) {
+            // do not register events
+            assert(nullptr != ti.conn.get());
+            pink_epoll_->PinkAddEvent(ti.conn.get(), 0);
           }
-        } else {
-          continue;
         }
       } else {
         in_conn = NULL;
