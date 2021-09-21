@@ -10,6 +10,9 @@
 
 #include <vector>
 
+#include <limits.h>
+#include <stdint.h>
+
 #if 0
   #include <folly/FBString.h>
   using dstring = folly::fbstring;
@@ -24,7 +27,9 @@ namespace pink {
 
 class RedisParser;
 
-typedef std::vector<dstring> RedisCmdArgsType;
+struct RedisCmdArgsType : std::vector<dstring> {
+  mutable uint16_t cmd_idx = UINT16_MAX;
+};
 typedef int (*RedisParserDataCb) (RedisParser*, const RedisCmdArgsType&);
 typedef int (*RedisParserMultiDataCb) (RedisParser*, std::vector<RedisCmdArgsType>&&);
 typedef int (*RedisParserCb) (RedisParser*);
