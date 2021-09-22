@@ -38,6 +38,8 @@ struct CmdTimeInfo {
 
 class PikaCmdRunTimeHistogram {
 public:
+  PikaCmdRunTimeHistogram(const PikaCmdRunTimeHistogram&) = delete;
+  PikaCmdRunTimeHistogram& operator=(const PikaCmdRunTimeHistogram&) = delete;
   PikaCmdRunTimeHistogram();
   ~PikaCmdRunTimeHistogram();
   void AddTimeMetric(CmdTimeInfo& info);
