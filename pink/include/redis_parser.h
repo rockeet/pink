@@ -12,6 +12,7 @@
 
 #include <limits.h>
 #include <stdint.h>
+#include <terark/valvec.hpp>
 
 #if 0
   #include <folly/FBString.h>
@@ -96,7 +97,7 @@ class RedisParser {
 
   long multibulk_len_;
   long bulk_len_;
-  std::string half_argv_;
+  terark::valvec<char> half_argv_;
 
   int redis_parser_type_; // REDIS_PARSER_REQUEST or REDIS_PARSER_RESPONSE
 
@@ -105,7 +106,7 @@ class RedisParser {
 
   int cur_pos_;
   const char* input_buf_;
-  std::string input_str_;
+  terark::valvec<char> input_str_;
   int length_;
 };
 

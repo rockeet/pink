@@ -317,7 +317,7 @@ void RedisParser::PrintCurrentStatus() {
   if (input_buf_ != NULL) {
     log_info(" input_buf %s", input_buf_);
   }
-  log_info("half_argv_ : %s", half_argv_.c_str());
+  log_info("half_argv_ : %.*s", (int)half_argv_.size(), half_argv_.data());
   log_info("input_buf len %d", length_);
 }
 
@@ -326,11 +326,15 @@ RedisParserStatus RedisParser::ProcessInputBuffer(
   if (status_code_ == kRedisParserInitDone ||
       status_code_ == kRedisParserHalf ||
       status_code_ == kRedisParserDone) {
-    // TODO AZ: avoid copy
-    std::string tmp_str(input_buf, length);
-    input_str_ = half_argv_ + tmp_str;
-    input_buf_ = input_str_.c_str();
-    length_ = length + half_argv_.size();
+    size_t half_len = half_argv_.size();
+    size_t full_len = half_len + length;
+    input_str_.ensure_capacity(full_len + 1);
+    input_str_.risk_set_size(full_len);
+    memcpy(input_str_.data(), half_argv_.data(), half_len);
+    memcpy(input_str_.data() + half_len, input_buf, length);
+    input_str_[full_len] = '\0'; // trailing '\0', act as std::string
+    input_buf_ = input_str_.data();
+    length_ = full_len;
     if (redis_parser_type_ == REDIS_PARSER_REQUEST) {
       ProcessRequestBuffer();
     } else if (redis_parser_type_ == REDIS_PARSER_RESPONSE) {
@@ -414,13 +418,13 @@ void RedisParser::ResetCommandStatus() {
   redis_type_ = 0;
   multibulk_len_ = 0;
   bulk_len_ = -1;
-  half_argv_.clear();
+  half_argv_.erase_all();
 }
 
 void RedisParser::ResetRedisParser() {
   cur_pos_ = 0;
   input_buf_ = NULL;
-  input_str_.clear();
+  input_str_.erase_all();
   length_ = 0;
 }
 
