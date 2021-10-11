@@ -332,7 +332,7 @@ RedisParserStatus RedisParser::ProcessInputBuffer(
     input_str_.risk_set_size(full_len);
     memcpy(input_str_.data(), half_argv_.data(), half_len);
     memcpy(input_str_.data() + half_len, input_buf, length);
-    input_str_[full_len] = '\0'; // trailing '\0', act as std::string
+    input_str_.data()[full_len] = '\0'; // trailing '\0', act as std::string
     input_buf_ = input_str_.data();
     length_ = full_len;
     if (redis_parser_type_ == REDIS_PARSER_REQUEST) {
