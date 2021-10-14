@@ -89,6 +89,11 @@ ReadStatus RedisConn::GetRequest() {
     if (new_size > rbuf_max_len_) {
       return kFullError;
     }
+    using std::max;
+    using std::min;
+    // inc new_size by REDIS_IOBUF_LEN may cause frequent realloc.
+    // inc by 1.5x reduce realloc freq with bounded complexity
+    new_size = min(rbuf_max_len_, max(rbuf_len_*3/2, new_size));
     rbuf_ = static_cast<char*>(realloc(rbuf_, new_size));
     if (rbuf_ == nullptr) {
       return kFullError;
