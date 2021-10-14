@@ -36,7 +36,7 @@ typedef int (*RedisParserMultiDataCb) (RedisParser*, std::vector<RedisCmdArgsTyp
 typedef int (*RedisParserCb) (RedisParser*);
 typedef int RedisParserType;
 
-enum RedisParserStatus {
+enum RedisParserStatus : uint8_t {
   kRedisParserNone = 0,
   kRedisParserInitDone = 1,
   kRedisParserHalf = 2,
@@ -44,7 +44,7 @@ enum RedisParserStatus {
   kRedisParserError = 4,
 };
 
-enum RedisParserError {
+enum RedisParserError : uint8_t {
   kRedisParserOk = 0,
   kRedisParserInitError = 1,
   kRedisParserFullError = 2, // input overwhelm internal buffer
@@ -54,17 +54,12 @@ enum RedisParserError {
 };
 
 struct RedisParserSettings {
-  RedisParserDataCb DealMessage;
-  RedisParserMultiDataCb Complete;
-  RedisParserSettings() {
-    DealMessage = NULL;
-    Complete = NULL;
-  }
+  RedisParserDataCb DealMessage = nullptr;
+  RedisParserMultiDataCb Complete = nullptr;
 };
 
 class RedisParser {
  public:
-  RedisParser();
   RedisParserStatus RedisParserInit(RedisParserType type, const RedisParserSettings& settings);
   RedisParserStatus ProcessInputBuffer(const char* input_buf, int length, int* parsed_len);
   long get_bulk_len() {
@@ -90,24 +85,23 @@ class RedisParser {
   void ResetCommandStatus();
 
   RedisParserSettings parser_settings_;
-  RedisParserStatus status_code_;
-  RedisParserError error_code_;
+  RedisParserStatus status_code_ = kRedisParserNone;
+  RedisParserError error_code_ = kRedisParserOk;
 
-  int redis_type_; // REDIS_REQ_INLINE or REDIS_REQ_MULTIBULK
+  uint8_t redis_type_ = 0; // REDIS_REQ_INLINE or REDIS_REQ_MULTIBULK
+  uint8_t redis_parser_type_ = REDIS_PARSER_REQUEST; // or REDIS_PARSER_RESPONSE
 
-  long multibulk_len_;
-  long bulk_len_;
+  long multibulk_len_ = 0;
+  long bulk_len_ = -1;
   terark::valvec<char> half_argv_;
-
-  int redis_parser_type_; // REDIS_PARSER_REQUEST or REDIS_PARSER_RESPONSE
 
   RedisCmdArgsType argv_;
   std::vector<RedisCmdArgsType> argvs_;
 
-  int cur_pos_;
-  const char* input_buf_;
+  int cur_pos_ = 0;
+  int length_ = 0;
+  const char* input_buf_ = nullptr;
   terark::valvec<char> input_str_;
-  int length_;
 };
 
 }  // namespace pink

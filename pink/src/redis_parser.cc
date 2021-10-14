@@ -168,18 +168,6 @@ int RedisParser::GetNextNum(int pos, long* value) {
   return -1; // Failed
 }
 
-RedisParser::RedisParser()
-  : status_code_(kRedisParserNone),
-    error_code_(kRedisParserOk),
-    redis_type_(0),
-    multibulk_len_(0),
-    bulk_len_(-1),
-    redis_parser_type_(REDIS_PARSER_REQUEST),
-    cur_pos_(0),
-    input_buf_(NULL),
-    length_(0) {
-}
-
 void RedisParser::SetParserStatus(RedisParserStatus status,
     RedisParserError error) {
   if (status == kRedisParserHalf) {
