@@ -136,8 +136,7 @@ void ThreadPool::set_should_stop() {
 }
 
 void ThreadPool::Schedule(TaskFunc func, void* arg) {
-  unsigned int unused = 0;
-  auto tsc = __builtin_ia32_rdtscp(&unused);
+  auto tsc = __builtin_ia32_rdtsc();
   auto idx = tsc % uint16_t(worker_num_);
   auto wrk = workers_[idx];
   wrk->Schedual(func, arg);
@@ -160,8 +159,7 @@ void ThreadPool::Worker::Schedual(TaskFunc func, void* arg) {
  */
 void ThreadPool::DelaySchedule(
     uint64_t timeout, TaskFunc func, void* arg) {
-  unsigned int unused = 0;
-  auto tsc = __builtin_ia32_rdtscp(&unused);
+  auto tsc = __builtin_ia32_rdtsc();
   auto idx = tsc % uint16_t(worker_num_);
   auto wrk = workers_[idx];
   wrk->DelaySchedule(timeout, func, arg);
@@ -174,8 +172,7 @@ void ThreadPool::Worker::DelaySchedule(
    */
   struct timeval now;
   gettimeofday(&now, NULL);
-  uint64_t exec_time;
-  exec_time = now.tv_sec * 1000000 + timeout * 1000 + now.tv_usec;
+  uint64_t exec_time = now.tv_sec * 1000000 + timeout * 1000 + now.tv_usec;
 
   mu_.Lock();
   if (!thread_pool_->should_stop()) {
