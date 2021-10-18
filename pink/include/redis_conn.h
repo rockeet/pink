@@ -14,6 +14,7 @@
 #include "pink/include/pink_define.h"
 #include "pink/include/pink_conn.h"
 #include "pink/include/redis_parser.h"
+#include <sys/uio.h>
 
 namespace pink {
 
@@ -58,8 +59,15 @@ class RedisConn: public PinkConn {
   int msg_peak_;
   int command_len_;
 
+#ifdef REDIS_DONT_USE_writev
   uint32_t wbuf_pos_;
   std::string response_;
+#else
+  std::vector<std::string> response_;
+  iovec* iov_ptr_ = nullptr;
+  int iov_idx_ = -1;
+  int iov_num_ = -1;
+#endif
 
   // For Redis Protocol parser
   int last_read_pos_;

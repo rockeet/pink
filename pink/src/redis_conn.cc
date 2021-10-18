@@ -15,6 +15,8 @@
 #include "slash/include/xdebug.h"
 #include "slash/include/slash_string.h"
 
+#include <terark/io/readv_writev.hpp>
+
 namespace pink {
 
 RedisConn::RedisConn(const int fd,
@@ -30,7 +32,9 @@ RedisConn::RedisConn(const int fd,
       rbuf_max_len_(rbuf_max_len),
       msg_peak_(0),
       command_len_(0),
+#ifdef REDIS_DONT_USE_writev
       wbuf_pos_(0),
+#endif
       last_read_pos_(-1),
       bulk_len_(-1) {
   RedisParserSettings settings;
@@ -137,6 +141,7 @@ ReadStatus RedisConn::GetRequest() {
 
 WriteStatus RedisConn::SendReply() {
   ssize_t nwritten = 0;
+#ifdef REDIS_DONT_USE_writev
   size_t wbuf_len = response_.size();
   while (wbuf_len > 0) {
     nwritten = send(fd(), response_.data() + wbuf_pos_, wbuf_len - wbuf_pos_, 0);
@@ -146,17 +151,43 @@ WriteStatus RedisConn::SendReply() {
     wbuf_pos_ += nwritten;
     if (wbuf_pos_ == wbuf_len) {
       // Have sended all response data
+     #if 0
       if (wbuf_len > DEFAULT_WBUF_SIZE) {
         std::string buf;
         buf.reserve(DEFAULT_WBUF_SIZE);
         response_.swap(buf);
       }
+     #endif
       response_.clear();
 
       wbuf_len = 0;
       wbuf_pos_ = 0;
     }
   }
+#else
+  int num;
+  iovec* iov;
+  if (nullptr == iov_ptr_) {
+    num = (int)response_.size();
+    iov = (iovec*)malloc(sizeof(iovec) * num);
+    for (int i = 0; i < num; ++i) {
+      iov[i].iov_base = response_[i].data();
+      iov[i].iov_len  = response_[i].size();
+    }
+    iov_ptr_ = iov;
+    iov_num_ = num;
+    iov_idx_ = 0;
+  }
+  else {
+    iov = iov_ptr_;
+    num = iov_num_;
+  }
+  do {
+    nwritten = terark::easy_writev(fd(), iov, num, &iov_idx_);
+  } while (nwritten > 0 && iov[num-1].iov_len);
+  // iov[num-1].iov_len == 0 indicate all data was sent
+  auto wbuf_len = iov[num].iov_len;
+#endif
   if (nwritten == -1) {
     if (errno == EAGAIN) {
       return kWriteHalf;
@@ -173,10 +204,14 @@ WriteStatus RedisConn::SendReply() {
 }
 
 int RedisConn::WriteResp(std::string&& resp) {
+#ifdef REDIS_DONT_USE_writev
   if (response_.empty())
     response_ = std::move(resp);
   else
     response_.append(resp);
+#else
+  response_.push_back(std::move(resp));
+#endif
   set_is_reply(true);
   return 0;
 }
