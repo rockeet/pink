@@ -162,6 +162,7 @@ WriteStatus RedisConn::SendReply() {
 
       wbuf_len = 0;
       wbuf_pos_ = 0;
+      return kWriteAll;
     }
   }
 #else
@@ -179,16 +180,14 @@ WriteStatus RedisConn::SendReply() {
   else {
     iov = iov_.data();
   }
-  size_t wbuf_len;
   do {
     nwritten = terark::easy_writev(fd(), iov, num, &iov_idx_);
-    wbuf_len = iov[num-1].iov_len;
-    //         iov[num-1].iov_len == 0 indicate all data was sent
-    if (0 == wbuf_len) {
+    if (0 == iov[num-1].iov_len) { // all data was successful sent
+      TERARK_VERIFY_GT(nwritten, 0);
       response_.clear();
       iov_.erase_all();
       iov_idx_ = -1;
-      break;
+      return kWriteAll;
     }
   } while (nwritten > 0);
 #endif
@@ -200,11 +199,7 @@ WriteStatus RedisConn::SendReply() {
       return kWriteError;
     }
   }
-  if (wbuf_len == 0) {
-    return kWriteAll;
-  } else {
-    return kWriteHalf;
-  }
+  return kWriteHalf;
 }
 
 int RedisConn::WriteResp(std::string&& resp) {

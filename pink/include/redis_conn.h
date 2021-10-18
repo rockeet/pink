@@ -65,9 +65,9 @@ class RedisConn: public PinkConn {
   uint32_t wbuf_pos_;
   std::string response_;
 #else
+  int iov_idx_ = -1;
   std::vector<std::string> response_;
   terark::valvec<iovec> iov_;
-  int iov_idx_ = -1;
 #endif
 
   // For Redis Protocol parser
