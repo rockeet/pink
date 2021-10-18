@@ -16,6 +16,8 @@
 #include "pink/include/redis_parser.h"
 #include <sys/uio.h>
 
+#include <terark/valvec.hpp>
+
 namespace pink {
 
 enum HandleType {
@@ -64,9 +66,8 @@ class RedisConn: public PinkConn {
   std::string response_;
 #else
   std::vector<std::string> response_;
-  iovec* iov_ptr_ = nullptr;
+  terark::valvec<iovec> iov_;
   int iov_idx_ = -1;
-  int iov_num_ = -1;
 #endif
 
   // For Redis Protocol parser

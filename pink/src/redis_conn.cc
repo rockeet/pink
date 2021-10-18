@@ -45,9 +45,6 @@ RedisConn::RedisConn(const int fd,
 }
 
 RedisConn::~RedisConn() {
-#ifndef REDIS_DONT_USE_writev
-  free(iov_ptr_);
-#endif
   free(rbuf_);
 }
 
@@ -168,28 +165,32 @@ WriteStatus RedisConn::SendReply() {
     }
   }
 #else
-  int num;
+  int num = response_.size();
   iovec* iov;
-  if (nullptr == iov_ptr_) {
-    num = (int)response_.size();
-    iov = (iovec*)malloc(sizeof(iovec) * num);
+  if (iov_idx_ < 0) {
+    iov_.resize_no_init(num);
+    iov = iov_.data();
     for (int i = 0; i < num; ++i) {
       iov[i].iov_base = response_[i].data();
       iov[i].iov_len  = response_[i].size();
     }
-    iov_ptr_ = iov;
-    iov_num_ = num;
     iov_idx_ = 0;
   }
   else {
-    iov = iov_ptr_;
-    num = iov_num_;
+    iov = iov_.data();
   }
+  size_t wbuf_len;
   do {
     nwritten = terark::easy_writev(fd(), iov, num, &iov_idx_);
-  } while (nwritten > 0 && iov[num-1].iov_len);
-  // iov[num-1].iov_len == 0 indicate all data was sent
-  auto wbuf_len = iov[num-1].iov_len;
+    wbuf_len = iov[num-1].iov_len;
+    //         iov[num-1].iov_len == 0 indicate all data was sent
+    if (0 == wbuf_len) {
+      response_.clear();
+      iov_.erase_all();
+      iov_idx_ = -1;
+      break;
+    }
+  } while (nwritten > 0);
 #endif
   if (nwritten == -1) {
     if (errno == EAGAIN) {
