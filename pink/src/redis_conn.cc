@@ -45,6 +45,7 @@ RedisConn::RedisConn(const int fd,
 }
 
 RedisConn::~RedisConn() {
+  free(iov_ptr_);
   free(rbuf_);
 }
 
@@ -186,7 +187,7 @@ WriteStatus RedisConn::SendReply() {
     nwritten = terark::easy_writev(fd(), iov, num, &iov_idx_);
   } while (nwritten > 0 && iov[num-1].iov_len);
   // iov[num-1].iov_len == 0 indicate all data was sent
-  auto wbuf_len = iov[num].iov_len;
+  auto wbuf_len = iov[num-1].iov_len;
 #endif
   if (nwritten == -1) {
     if (errno == EAGAIN) {
