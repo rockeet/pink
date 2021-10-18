@@ -41,10 +41,10 @@ class RedisConn: public PinkConn {
   void SetHandleType(const HandleType& handle_type);
   HandleType GetHandleType();
 
-  virtual void ProcessRedisCmds(std::vector<RedisCmdArgsType>&& argvs, bool async, std::string* response);
+  virtual void ProcessRedisCmds(std::vector<RedisCmdArgsType>&& argvs, bool async);
   void NotifyEpoll(bool success);
 
-  virtual int DealMessage(const RedisCmdArgsType& argv, std::string* response) = 0;
+  virtual int DealMessage(const RedisCmdArgsType& argv) = 0;
 
  private:
   static int ParserDealMessageCb(RedisParser* parser, const RedisCmdArgsType& argv);
