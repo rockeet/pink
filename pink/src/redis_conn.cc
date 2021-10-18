@@ -45,7 +45,9 @@ RedisConn::RedisConn(const int fd,
 }
 
 RedisConn::~RedisConn() {
+#ifndef REDIS_DONT_USE_writev
   free(iov_ptr_);
+#endif
   free(rbuf_);
 }
 
