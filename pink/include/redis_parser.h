@@ -61,7 +61,7 @@ struct RedisParserSettings {
 class RedisParser {
  public:
   RedisParserStatus RedisParserInit(RedisParserType type, const RedisParserSettings& settings);
-  RedisParserStatus ProcessInputBuffer(const char* input_buf, int length, int* parsed_len);
+  RedisParserStatus ProcessInputBuffer(const char* input_buf, size_t length);
   long get_bulk_len() {
     return bulk_len_;
   }

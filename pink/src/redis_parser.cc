@@ -309,8 +309,8 @@ void RedisParser::PrintCurrentStatus() {
   log_info("input_buf len %d", length_);
 }
 
-RedisParserStatus RedisParser::ProcessInputBuffer(
-    const char* input_buf, int length, int* parsed_len) {
+RedisParserStatus
+RedisParser::ProcessInputBuffer(const char* input_buf, size_t length) {
   if (status_code_ == kRedisParserInitDone ||
       status_code_ == kRedisParserHalf ||
       status_code_ == kRedisParserDone) {
@@ -332,7 +332,6 @@ RedisParserStatus RedisParser::ProcessInputBuffer(
       return status_code_;
     }
     // cur_pos_ starts from 0, val of cur_pos_ is the parsed_len
-    *parsed_len = cur_pos_;
     ResetRedisParser();
     //PrintCurrentStatus();
     return status_code_;

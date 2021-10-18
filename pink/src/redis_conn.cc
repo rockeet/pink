@@ -73,9 +73,7 @@ ReadStatus RedisConn::ParseRedisParserStatus(RedisParserStatus status) {
 }
 
 ReadStatus RedisConn::GetRequest() {
-  ssize_t nread = 0;
   int next_read_pos = last_read_pos_ + 1;
-
   int remain = rbuf_len_ - next_read_pos;  // Remain buffer size
   int new_size = 0;
   if (remain == 0) {
@@ -100,9 +98,8 @@ ReadStatus RedisConn::GetRequest() {
     }
     rbuf_len_ = new_size;
   }
-
-  nread = read(fd(), rbuf_ + next_read_pos, remain);
-  if (nread == -1) {
+  ssize_t nread = read(fd(), rbuf_ + next_read_pos, remain);
+  if (nread < 0) {
     if (errno == EAGAIN) {
       nread = 0;
       return kReadHalf; // HALF
@@ -122,10 +119,8 @@ ReadStatus RedisConn::GetRequest() {
     log_info("close conn command_len %d, rbuf_max_len %d", command_len_, rbuf_max_len_);
     return kFullError;
   }
-
-  int processed_len = 0;
   RedisParserStatus ret = redis_parser_.ProcessInputBuffer(
-      rbuf_ + next_read_pos, nread, &processed_len);
+      rbuf_ + next_read_pos, nread);
   ReadStatus read_status = ParseRedisParserStatus(ret);
   if (read_status == kReadAll || read_status == kReadHalf) {
     if (read_status == kReadAll) {
