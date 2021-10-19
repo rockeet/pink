@@ -103,7 +103,10 @@ class PinkConn : public std::enable_shared_from_this<PinkConn> {
   }
 
   void delayed_del() { is_waiting_del_ = true; }
-  bool is_deleting() { return is_waiting_del_;  }
+  bool is_deleting() const { return is_waiting_del_;  }
+
+  bool is_partial_request() const { return is_partial_request_; }
+  void set_is_partial_request(bool b) { is_partial_request_ = b; }
 
 #ifdef __ENABLE_SSL
   SSL* ssl() {
@@ -121,6 +124,7 @@ class PinkConn : public std::enable_shared_from_this<PinkConn> {
   int fd_;
   int flags_;
   std::string ip_port_;
+  bool is_partial_request_;
   bool is_reply_;
   bool is_writable_;
   bool is_waiting_del_;

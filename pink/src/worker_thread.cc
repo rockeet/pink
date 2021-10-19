@@ -186,10 +186,10 @@ void *WorkerThread::ThreadMain() {
 
         if ((pfe->mask & EPOLLOUT) && in_conn->is_reply()) {
           WriteStatus write_status = in_conn->SendReply();
-          in_conn->metric_info.response_end_time = pf.now();
-          g_pika_cmd_run_time_histogram->AddTimeMetric(in_conn->metric_info);
           in_conn->set_last_interaction(now);
           if (write_status == kWriteAll) {
+            in_conn->metric_info.response_end_time = pf.now();
+            g_pika_cmd_run_time_histogram->AddTimeMetric(in_conn->metric_info);
             pink_epoll_->PinkModEvent(pconn, 0, EPOLLIN);
             in_conn->set_is_reply(false);
           } else if (write_status == kWriteHalf) {
@@ -200,10 +200,14 @@ void *WorkerThread::ThreadMain() {
         }
 
         if (!should_close && (pfe->mask & EPOLLIN)) {
-          in_conn->metric_info.read_start_time = pf.now();
+          if (!in_conn->is_partial_request()) {
+            in_conn->set_is_partial_request(true);
+            in_conn->metric_info.read_start_time = pf.now();
+          }
           ReadStatus read_status = in_conn->GetRequest();
           in_conn->set_last_interaction(now);
           if (read_status == kReadAll) {
+            in_conn->set_is_partial_request(false);
             pink_epoll_->PinkModEvent(pconn, 0, 0);
             // Wait for the conn complete asynchronous task and
             // Mod Event to EPOLLOUT
