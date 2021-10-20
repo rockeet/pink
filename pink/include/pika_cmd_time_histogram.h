@@ -31,7 +31,7 @@ struct CmdProcessTime {
 struct CmdTimeInfo {
   uint64_t read_start_time;
   uint64_t parse_end_time;
-  uint64_t schdule_end_time;
+  uint64_t schedule_end_time;
   uint64_t response_end_time;
   std::vector<CmdProcessTime> cmd_process_times;
 };

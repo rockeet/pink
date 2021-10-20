@@ -42,7 +42,7 @@ static terark::profiling pf;
 void PikaCmdRunTimeHistogram::AddTimeMetric(CmdTimeInfo& info) {
   for (auto& cmdinfo: info.cmd_process_times) {
     AddTimeMetric(cmdinfo.cmd_idx, pf.us(info.read_start_time, info.parse_end_time), Parse);
-    AddTimeMetric(cmdinfo.cmd_idx, pf.us(info.parse_end_time, info.schdule_end_time), Schedule);
+    AddTimeMetric(cmdinfo.cmd_idx, pf.us(info.parse_end_time, info.schedule_end_time), Schedule);
     AddTimeMetric(cmdinfo.cmd_idx, pf.us(cmdinfo.start_time, cmdinfo.end_time), Process);
     AddTimeMetric(cmdinfo.cmd_idx, pf.us(cmdinfo.end_time, info.response_end_time), Response);
     AddTimeMetric(cmdinfo.cmd_idx, pf.us(info.read_start_time, info.response_end_time), All);
