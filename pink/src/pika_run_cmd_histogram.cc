@@ -61,10 +61,10 @@ std::string PikaCmdRunTimeHistogram::GetTimeMetric() {
       size_t limit = 0;
       for (size_t i = bucketMapper.BucketCount(); i; ) {
         i--;
-        if (buckets[i].cnt > 0) { limit = i; break; }
+        if (buckets[i] > 0) { limit = i; break; }
       }
       for (size_t i = 0; i <= limit; i++) {
-        last += buckets[i].cnt;
+        last += buckets[i];
         oss<<"pika_cost_time_bucket{"<<"name=\""<<name<<"\" step=\""<<step_str[step]<<"\" le=\""<<bucketMapper.BucketLimit(i)<<"\"} "<<last<<"\n";
       }
       oss<<"pika_cost_time_bucket{"<<"name=\""<<name<<"\" step=\""<<step_str[step]<<"\" le=\"+Inf\"} "<<last<<"\n";
