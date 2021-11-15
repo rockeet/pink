@@ -55,7 +55,6 @@ class ThreadPool {
 
   void Schedule(TaskFunc func, void* arg);
   void DelaySchedule(uint64_t timeout, TaskFunc func, void* arg);
-  size_t max_queue_size();
   size_t worker_size();
   void cur_queue_size(size_t* qsize);
   void cur_time_queue_size(size_t* qsize);
@@ -63,7 +62,6 @@ class ThreadPool {
 
  private:
   size_t worker_num_;
-  size_t max_queue_size_;
   std::string thread_pool_name_;
   std::vector<Worker*> workers_;
   std::atomic<bool> running_;

@@ -5,13 +5,16 @@
 
 #include "pink/include/thread_pool.h"
 #include "pink/src/pink_thread_name.h"
+#include <assert.h>
 //#include <terark/util/concurrent_queue.hpp>
-//#include <terark/circular_queue.hpp>
+#include <terark/circular_queue.hpp>
 //#include <terark/valvec.hpp>
 
 #include <sys/time.h>
 
 namespace pink {
+
+constexpr size_t QUEUE_CAP = 63;
 
 class ThreadPool::Worker {
   public:
@@ -20,6 +23,7 @@ class ThreadPool::Worker {
     {
       // ignore user specified queue cap
       //queue_.queue().init(64); // cap=64 is enough
+      queue_.init(QUEUE_CAP + 1);
     }
     static void* WorkerMain(void* arg);
 
@@ -33,7 +37,8 @@ class ThreadPool::Worker {
 
     //terark::util::concurrent_queue<terark::circular_queue<Task> > queue_;
     //std::priority_queue<TimeTask, terark::valvec<TimeTask> > time_queue_;
-    std::queue<Task> queue_;
+    terark::circular_queue<Task, true> queue_;
+    //std::dequeue<Task> queue_;
     std::priority_queue<TimeTask> time_queue_;
     slash::Mutex mu_;
     slash::CondVar rsignal_;
@@ -79,10 +84,9 @@ int ThreadPool::Worker::stop() {
 }
 
 ThreadPool::ThreadPool(size_t worker_num,
-                       size_t max_queue_size,
+                       size_t /*max_queue_size*/,
                        const std::string& thread_pool_name) :
   worker_num_(worker_num),
-  max_queue_size_(max_queue_size),
   thread_pool_name_(thread_pool_name),
   running_(false),
   should_stop_(false)
@@ -144,11 +148,11 @@ void ThreadPool::Schedule(TaskFunc func, void* arg) {
 void ThreadPool::Worker::Schedual(TaskFunc func, void* arg) {
   ThreadPool* tp = thread_pool_;
   mu_.Lock();
-  while (queue_.size() >= tp->max_queue_size_ && !tp->should_stop()) {
+  while (queue_.size() >= QUEUE_CAP && !tp->should_stop()) {
     wsignal_.Wait();
   }
   if (!tp->should_stop()) {
-    queue_.push(Task(func, arg));
+    queue_.push_back(Task(func, arg));
     rsignal_.Signal();
   }
   mu_.Unlock();
@@ -180,10 +184,6 @@ void ThreadPool::Worker::DelaySchedule(
     rsignal_.Signal();
   }
   mu_.Unlock();
-}
-
-size_t ThreadPool::max_queue_size() {
-  return max_queue_size_;
 }
 
 void ThreadPool::cur_queue_size(size_t* qsize) {
@@ -242,7 +242,7 @@ void ThreadPool::Worker::WorkerRun() {
     if (!queue_.empty()) {
       TaskFunc func = queue_.front().func;
       void* arg = queue_.front().arg;
-      queue_.pop();
+      queue_.pop_back();
       wsignal_.Signal();
       mu_.Unlock();
       (*func)(arg);
