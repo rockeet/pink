@@ -5,18 +5,16 @@
 
 #include "pink/include/thread_pool.h"
 #include "pink/src/pink_thread_name.h"
-#include <assert.h>
-//#include <terark/util/concurrent_queue.hpp>
+#include <terark/stdtypes.hpp>
 #include <terark/circular_queue.hpp>
-//#include <terark/valvec.hpp>
-
 #include <sys/time.h>
+#include <boost/noncopyable.hpp>
 
 namespace pink {
 
 constexpr size_t QUEUE_CAP = 63;
 
-class ThreadPool::Worker {
+class ThreadPool::Worker : boost::noncopyable {
   public:
     explicit Worker(ThreadPool* tp)
        : rsignal_(&mu_), wsignal_(&mu_), start_(false), thread_pool_(tp)
@@ -35,10 +33,7 @@ class ThreadPool::Worker {
     int start();
     int stop();
 
-    //terark::util::concurrent_queue<terark::circular_queue<Task> > queue_;
-    //std::priority_queue<TimeTask, terark::valvec<TimeTask> > time_queue_;
     terark::circular_queue<Task, true> queue_;
-    //std::dequeue<Task> queue_;
     std::priority_queue<TimeTask> time_queue_;
     slash::Mutex mu_;
     slash::CondVar rsignal_;
@@ -48,11 +43,6 @@ class ThreadPool::Worker {
     ThreadPool* const thread_pool_;
     pthread_t thread_id_;
     std::string worker_name_;
-    /*
-      * No allowed copy and copy assign
-      */
-    Worker(const Worker&) = delete;
-    void operator=(const Worker&) = delete;
 };
 
 void* ThreadPool::Worker::WorkerMain(void* arg) {
@@ -132,11 +122,11 @@ int ThreadPool::stop_thread_pool() {
 }
 
 bool ThreadPool::should_stop() {
-  return should_stop_.load();
+  return should_stop_.load(std::memory_order_relaxed);
 }
 
 void ThreadPool::set_should_stop() {
-  should_stop_.store(true);
+  should_stop_.store(true, std::memory_order_relaxed);
 }
 
 void ThreadPool::Schedule(TaskFunc func, void* arg) {
@@ -242,7 +232,7 @@ void ThreadPool::Worker::WorkerRun() {
     if (!queue_.empty()) {
       TaskFunc func = queue_.front().func;
       void* arg = queue_.front().arg;
-      queue_.pop_back();
+      queue_.pop_front();
       wsignal_.Signal();
       mu_.Unlock();
       (*func)(arg);
