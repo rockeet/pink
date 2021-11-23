@@ -20,6 +20,7 @@
 #include "pink/include/pink_conn.h"
 #include "terark/stdtypes.hpp"
 #include "terark/util/function.hpp"
+#include <glog/logging.h>
 
 namespace pink {
 
@@ -73,7 +74,7 @@ Status BackendThread::Write(const int fd, const std::string& msg) {
     const auto iter = conns_.find(fd);
     if (conns_.end() == iter) {
       return Status::Corruption(std::to_string(fd) + " cannot find !");
-    }  
+    }
     auto addr = iter->second->ip_port();
     if (!handle_->AccessHandle(addr)) {
       return Status::Corruption(addr + " is baned by user!");
@@ -98,7 +99,7 @@ Status BackendThread::Close(const int fd) {
     if (conns_.find(fd) == conns_.end()) {
       return Status::OK();
     }
-  }  
+  }
   NotifyClose(fd);
   return Status::OK();
 }
@@ -137,7 +138,7 @@ void BackendThread::AddConnection(const std::string& peer_ip, int peer_port, int
   {
     slash::MutexLock l(&mu_);
     conns_.insert(std::make_pair(sockfd, tc));
-  }  
+  }
 }
 
 Status BackendThread::Connect(const std::string& dst_ip, const int dst_port, int *fd) {
@@ -251,7 +252,7 @@ void BackendThread::DoCronTask() {
     // Check keepalive timeout connection
     if (keepalive_timeout_ > 0 &&
         (now.tv_sec - conn->last_interaction().tv_sec > keepalive_timeout_)) {
-      log_info("Do cron task del fd %d\n", conn->fd());
+      LOG(INFO) << "Do cron task del conn = " << conn->ip_port() << ", fd = " << conn->fd();
       pink_epoll_->PinkDelEvent(conn->fd());
       close(conn->fd());
       handle_->FdTimeoutHandle(conn->fd(), conn->ip_port());
@@ -270,7 +271,6 @@ void BackendThread::DoCronTask() {
 
     ++iter;
   }
-
 }
 
 void BackendThread::InternalDebugPrint() {

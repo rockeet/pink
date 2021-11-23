@@ -228,7 +228,7 @@ void ClientThread::DoCronTask() {
     // Check keepalive timeout connection
     if (keepalive_timeout_ > 0 &&
         (now.tv_sec - conn->last_interaction().tv_sec > keepalive_timeout_)) {
-      log_info("Do cron task del fd %d\n", conn->fd());
+      LOG(INFO) << "Do cron task del conn = " << conn->ip_port() << ", fd = " << conn->fd();
       pink_epoll_->PinkDelEvent(conn->fd());
       // did not clean up content in to_send queue
       // will try to send remaining by reconnecting
