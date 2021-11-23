@@ -9,8 +9,11 @@
 #include <functional>
 #include <iostream>
 #include <map>
+#include <rocksdb/enum_reflection.h>
 
 namespace pink {
+
+using namespace rocksdb;
 
 #define PINK_MAX_CLIENTS 10240
 #define PINK_MAX_MESSAGE 1024
@@ -58,7 +61,7 @@ enum ConnStatus {
   kWriteObuf = 4,
 };
 
-enum ReadStatus {
+ROCKSDB_ENUM_PLAIN(ReadStatus, int,
   kReadHalf = 0,
   kReadAll = 1,
   kReadError = 2,
@@ -66,14 +69,14 @@ enum ReadStatus {
   kFullError = 4,
   kParseError = 5,
   kDealError = 6,
-  kOk = 7,
-};
+  kOk = 7
+);
 
-enum WriteStatus {
+ROCKSDB_ENUM_PLAIN(WriteStatus, int,
   kWriteHalf = 0,
   kWriteAll = 1,
-  kWriteError = 2,
-};
+  kWriteError = 2
+);
 
 enum RetCode {
   kSuccess = 0,

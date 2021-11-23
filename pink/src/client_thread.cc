@@ -442,7 +442,7 @@ void *ClientThread::ThreadMain() {
         } else if (write_status == kWriteHalf) {
           continue;
         } else {
-          LOG(INFO) << "send reply error " << write_status;
+          LOG(INFO) << "send reply error " << enum_stdstr(write_status);
           should_close = 1;
         }
       }
@@ -455,7 +455,7 @@ void *ClientThread::ThreadMain() {
         } else if (read_status == kReadHalf) {
           continue;
         } else {
-          LOG(INFO) << "Get request error " << read_status;
+          LOG(INFO) << "Get request error " << enum_stdstr(read_status);
           should_close = 1;
         }
       }
