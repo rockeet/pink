@@ -16,6 +16,7 @@
 #include "slash/include/slash_string.h"
 
 #include <terark/io/readv_writev.hpp>
+#include <glog/logging.h>
 
 namespace pink {
 
@@ -120,7 +121,7 @@ ReadStatus RedisConn::GetRequest() {
   msg_peak_ = last_read_pos_;
   command_len_ += nread;
   if (command_len_ >= rbuf_max_len_) {
-    log_info("close conn command_len %d, rbuf_max_len %d", command_len_, rbuf_max_len_);
+    LOG(INFO) <<"close conn command_len " << command_len_ << ", rbuf_max_len " << rbuf_max_len_;
     return kFullError;
   }
   RedisParserStatus ret = redis_parser_.ProcessInputBuffer(

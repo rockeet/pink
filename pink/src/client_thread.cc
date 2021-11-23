@@ -22,6 +22,8 @@
 #include "terark/stdtypes.hpp"
 #include "terark/util/function.hpp"
 
+#include <glog/logging.h>
+
 namespace pink {
 
 using slash::Status;
@@ -359,7 +361,7 @@ void ClientThread::ProcessNotifyEvents(const PinkFiredEvent* pfe) {
           to_send_.erase(iter);
           }
         } else if (ti.notify_type() == kNotiClose) {
-          log_info("received kNotiClose\n");
+          LOG(INFO) << "received kNotiClose : " << ip_port;
           pink_epoll_->PinkDelEvent(fd);
           CloseFd(fd, ip_port);
           fd_conns_.erase(fd);
@@ -416,7 +418,7 @@ void *ClientThread::ThreadMain() {
       int should_close = 0;
       std::map<int, std::shared_ptr<PinkConn>>::iterator iter = fd_conns_.find(pfe->fd);
       if (iter == fd_conns_.end()) {
-        log_info("fd %d not found in fd_conns\n", pfe->fd);
+        LOG(INFO) << "fd " << pfe->fd << " not found in fd_conns";
         pink_epoll_->PinkDelEvent(pfe->fd);
         continue;
       }
@@ -440,7 +442,7 @@ void *ClientThread::ThreadMain() {
         } else if (write_status == kWriteHalf) {
           continue;
         } else {
-          log_info("send reply error %d\n", write_status);
+          LOG(INFO) << "send reply error " << write_status;
           should_close = 1;
         }
       }
@@ -453,14 +455,14 @@ void *ClientThread::ThreadMain() {
         } else if (read_status == kReadHalf) {
           continue;
         } else {
-          log_info("Get request error %d\n", read_status);
+          LOG(INFO) << "Get request error " << read_status;
           should_close = 1;
         }
       }
 
       if ((pfe->mask & EPOLLERR) || (pfe->mask & EPOLLHUP) || should_close) {
         {
-          log_info("close connection %d reason %d %d\n", pfe->fd, pfe->mask, should_close);
+          LOG(INFO) << "close connection fd=" <<  pfe->fd << " reason " << pfe->mask << " " << should_close;
           pink_epoll_->PinkDelEvent(pfe->fd);
           CloseFd(conn);
           fd_conns_.erase(pfe->fd);

@@ -10,6 +10,7 @@
 #include "pink/src/pink_item.h"
 #include "pink/src/pink_epoll.h"
 #include "pink/src/worker_thread.h"
+#include <glog/logging.h>
 
 namespace pink {
 
@@ -178,7 +179,7 @@ void DispatchThread::HandleNewConn(
   }
 
   if (!find) {
-    log_info("all workers are full, queue limit is %d", queue_limit_);
+    LOG(INFO) << "all workers are full, queue limit is " << queue_limit_;
     // every worker is full
     // TODO(anan) maybe add log
     close(connfd);

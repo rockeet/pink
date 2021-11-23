@@ -16,6 +16,7 @@
 #include "slash/include/slash_string.h"
 #include "pink/include/pika_cmd_time_histogram.h"
 #include "terark/util/profiling.hpp"
+#include <glog/logging.h>
 
 auto g_pika_cmd_run_time_histogram = new time_histogram::PikaCmdRunTimeHistogram();
 
@@ -222,6 +223,7 @@ void *WorkerThread::ThreadMain() {
           int fd = pconn->fd();
           pink_epoll_->PinkDelEvent(pconn);
           CloseFd(in_conn);
+          LOG(INFO) << "CloseFd(" << in_conn->ip_port() << ")";
           in_conn = NULL;
           {
             slash::WriteLock l(&rwlock_);
