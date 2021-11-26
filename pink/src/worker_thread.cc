@@ -196,6 +196,7 @@ void *WorkerThread::ThreadMain() {
           } else if (write_status == kWriteHalf) {
             continue;
           } else {
+            LOG(INFO) << "write_status = " << enum_stdstr(write_status);
             should_close = 1;
           }
         }
@@ -215,6 +216,7 @@ void *WorkerThread::ThreadMain() {
           } else if (read_status == kReadHalf) {
             continue;
           } else {
+            LOG(INFO) << "read_status = " << enum_stdstr(read_status);
             should_close = 1;
           }
         }
@@ -223,7 +225,10 @@ void *WorkerThread::ThreadMain() {
           int fd = pconn->fd();
           pink_epoll_->PinkDelEvent(pconn);
           CloseFd(in_conn);
-          LOG(INFO) << "CloseFd(" << in_conn->ip_port() << ")";
+          LOG(INFO) << "CloseFd(" << in_conn->ip_port() << "):"
+                    << " mask = " << std::hex << pfe->mask
+                    << ", should_close = " << should_close
+                    ;
           in_conn = NULL;
           {
             slash::WriteLock l(&rwlock_);
@@ -272,6 +277,10 @@ void WorkerThread::DoCronTask() {
       // Check keepalive timeout connection
       if (keepalive_timeout_ > 0 &&
           (now.tv_sec - conn->last_interaction().tv_sec > keepalive_timeout_)) {
+        double idle_sec = (now.tv_sec - conn->last_interaction().tv_sec)
+                        + (now.tv_usec - conn->last_interaction().tv_usec) / 1e3;
+        LOG(INFO) << "conn(" << conn->ip_port() << ") timeout, idled time = "
+                  << idle_sec << ", keepalive_timeout = " << keepalive_timeout_ << " sec";
         to_timeout.push_back(conn);
         iter = conns_.erase(iter);
         continue;
