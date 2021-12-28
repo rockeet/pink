@@ -108,6 +108,9 @@ class PinkConn : public std::enable_shared_from_this<PinkConn> {
   bool is_partial_request() const { return is_partial_request_; }
   void set_is_partial_request(bool b) { is_partial_request_ = b; }
 
+  bool is_quit() const { return is_quit_;  }
+  void set_is_quit() { is_quit_ = true; }
+
 #ifdef __ENABLE_SSL
   SSL* ssl() {
     return ssl_;
@@ -128,6 +131,7 @@ class PinkConn : public std::enable_shared_from_this<PinkConn> {
   bool is_reply_;
   bool is_writable_;
   bool is_waiting_del_;
+  bool is_quit_ = false;
   struct timeval last_interaction_;
 
 #ifdef __ENABLE_SSL
