@@ -62,6 +62,7 @@ class ThreadPool {
 
  private:
   size_t worker_num_;
+  struct CoreLocalTaskQueue* cltq_;
   std::string thread_pool_name_;
   std::vector<Worker*> workers_;
   std::atomic<bool> running_;

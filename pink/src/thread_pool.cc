@@ -54,7 +54,6 @@ struct CoreLocalTaskQueue : MyCoreLocal<TaskQueue> {
     }
   }
 };
-static CoreLocalTaskQueue g_tq;
 
 class ThreadPool::Worker : boost::noncopyable {
   public:
@@ -110,10 +109,13 @@ ThreadPool::ThreadPool(size_t worker_num,
   thread_pool_name_(thread_pool_name),
   running_(false),
   should_stop_(false)
-  {}
+  {
+    cltq_ = new CoreLocalTaskQueue();
+  }
 
 ThreadPool::~ThreadPool() {
   stop_thread_pool();
+  delete cltq_;
 }
 
 int ThreadPool::start_thread_pool() {
@@ -135,7 +137,7 @@ int ThreadPool::stop_thread_pool() {
   int res = 0;
   if (running_.load()) {
     should_stop_.store(true);
-    g_tq.Stop();
+    cltq_->Stop();
     for (const auto worker : workers_) {
       res = worker->stop();
       if (res != 0) {
@@ -160,8 +162,8 @@ void ThreadPool::set_should_stop() {
 
 void ThreadPool::Schedule(TaskFunc func, void* arg) {
   auto tsc = __builtin_ia32_rdtsc();
-  auto idx = tsc % uint16_t(g_tq.NumCores());
-  TaskQueue* tq = g_tq.AccessAtCore(idx);
+  auto idx = tsc % uint16_t(cltq_->NumCores());
+  TaskQueue* tq = cltq_->AccessAtCore(idx);
   tq->Schedule(this, func, arg);
 }
 void TaskQueue::Schedule(ThreadPool* tp, TaskFunc func, void* arg) {
@@ -182,8 +184,8 @@ void TaskQueue::Schedule(ThreadPool* tp, TaskFunc func, void* arg) {
 void ThreadPool::DelaySchedule(
     uint64_t timeout, TaskFunc func, void* arg) {
   auto tsc = __builtin_ia32_rdtsc();
-  auto idx = tsc % uint16_t(g_tq.NumCores());
-  TaskQueue* tq = g_tq.AccessAtCore(idx);
+  auto idx = tsc % uint16_t(cltq_->NumCores());
+  TaskQueue* tq = cltq_->AccessAtCore(idx);
   tq->DelaySchedule(this, timeout, func, arg);
 }
 
@@ -207,8 +209,8 @@ void TaskQueue::DelaySchedule(
 
 void ThreadPool::cur_queue_size(size_t* qsize) {
   size_t n = 0;
-  for (size_t i = 0; i < g_tq.NumCores(); ++i) {
-    TaskQueue* w = g_tq.AccessAtCore(i);
+  for (size_t i = 0; i < cltq_->NumCores(); ++i) {
+    TaskQueue* w = cltq_->AccessAtCore(i);
     slash::MutexLock l(&w->mu_);
     n += w->queue_.size();
   }
@@ -217,8 +219,8 @@ void ThreadPool::cur_queue_size(size_t* qsize) {
 
 void ThreadPool::cur_time_queue_size(size_t* qsize) {
   size_t n = 0;
-  for (size_t i = 0; i < g_tq.NumCores(); ++i) {
-    TaskQueue* w = g_tq.AccessAtCore(i);
+  for (size_t i = 0; i < cltq_->NumCores(); ++i) {
+    TaskQueue* w = cltq_->AccessAtCore(i);
     n += w->time_queue_.size();
   }
   *qsize = n;
@@ -230,8 +232,9 @@ std::string ThreadPool::thread_pool_name() {
 
 void ThreadPool::Worker::WorkerRun() {
   ThreadPool* tp = thread_pool_;
+  CoreLocalTaskQueue* cltq = tp->cltq_;
   while (!tp->should_stop()) {
-    TaskQueue* tq = g_tq.Access();
+    TaskQueue* tq = cltq->Access();
     tq->RunOnce(tp);
   }
 }
