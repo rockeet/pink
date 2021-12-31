@@ -9,35 +9,65 @@
 #include <terark/circular_queue.hpp>
 #include <sys/time.h>
 #include <boost/noncopyable.hpp>
+#include <util/core_local.h> // rocksdb
 
 namespace pink {
 
 constexpr size_t QUEUE_CAP = 63;
 
+struct TaskQueue {
+  terark::circular_queue<Task, true> queue_;
+  std::priority_queue<TimeTask> time_queue_;
+  slash::Mutex mu_;
+  slash::CondVar rsignal_;
+  slash::CondVar wsignal_;
+
+  TaskQueue() : rsignal_(&mu_), wsignal_(&mu_) {
+    // ignore user specified queue cap
+    //queue_.queue().init(64); // cap=64 is enough
+    queue_.init(QUEUE_CAP + 1);
+  }
+  void Schedule(ThreadPool* tp, TaskFunc func, void* arg);
+  void DelaySchedule(ThreadPool* tp, uint64_t timeout, TaskFunc func, void* arg);
+  void RunOnce(ThreadPool* tp);
+};
+template<class T>
+class FakeCoreLocal {
+  T m_val;
+public:
+  size_t NumCores() const { return 1; }
+  T* Access() { return &m_val; }
+  T* AccessAtCore(size_t) { return &m_val; }
+};
+#if 1
+#define MyCoreLocal FakeCoreLocal
+#else
+// CoreLocalArray has some bug producing UB
+#define MyCoreLocal rocksdb::CoreLocalArray
+#endif
+struct CoreLocalTaskQueue : MyCoreLocal<TaskQueue> {
+  void Stop() {
+    for (size_t i = 0, n = this->NumCores(); i < n; ++i) {
+      TaskQueue* tq = this->AccessAtCore(i);
+      tq->rsignal_.SignalAll();
+      tq->wsignal_.SignalAll();
+    }
+  }
+};
+static CoreLocalTaskQueue g_tq;
+
 class ThreadPool::Worker : boost::noncopyable {
   public:
     explicit Worker(ThreadPool* tp)
-       : rsignal_(&mu_), wsignal_(&mu_), start_(false), thread_pool_(tp)
+       : start_(false), thread_pool_(tp)
     {
-      // ignore user specified queue cap
-      //queue_.queue().init(64); // cap=64 is enough
-      queue_.init(QUEUE_CAP + 1);
     }
     static void* WorkerMain(void* arg);
 
     void WorkerRun();
 
-    void Schedual(TaskFunc func, void* arg);
-    void DelaySchedule(uint64_t timeout, TaskFunc func, void* arg);
-
     int start();
     int stop();
-
-    terark::circular_queue<Task, true> queue_;
-    std::priority_queue<TimeTask> time_queue_;
-    slash::Mutex mu_;
-    slash::CondVar rsignal_;
-    slash::CondVar wsignal_;
 
     std::atomic<bool> start_;
     ThreadPool* const thread_pool_;
@@ -105,9 +135,8 @@ int ThreadPool::stop_thread_pool() {
   int res = 0;
   if (running_.load()) {
     should_stop_.store(true);
+    g_tq.Stop();
     for (const auto worker : workers_) {
-      worker->rsignal_.SignalAll();
-      worker->wsignal_.SignalAll();
       res = worker->stop();
       if (res != 0) {
         break;
@@ -131,12 +160,11 @@ void ThreadPool::set_should_stop() {
 
 void ThreadPool::Schedule(TaskFunc func, void* arg) {
   auto tsc = __builtin_ia32_rdtsc();
-  auto idx = tsc % uint16_t(worker_num_);
-  auto wrk = workers_[idx];
-  wrk->Schedual(func, arg);
+  auto idx = tsc % uint16_t(g_tq.NumCores());
+  TaskQueue* tq = g_tq.AccessAtCore(idx);
+  tq->Schedule(this, func, arg);
 }
-void ThreadPool::Worker::Schedual(TaskFunc func, void* arg) {
-  ThreadPool* tp = thread_pool_;
+void TaskQueue::Schedule(ThreadPool* tp, TaskFunc func, void* arg) {
   mu_.Lock();
   while (queue_.size() >= QUEUE_CAP && !tp->should_stop()) {
     wsignal_.Wait();
@@ -154,12 +182,13 @@ void ThreadPool::Worker::Schedual(TaskFunc func, void* arg) {
 void ThreadPool::DelaySchedule(
     uint64_t timeout, TaskFunc func, void* arg) {
   auto tsc = __builtin_ia32_rdtsc();
-  auto idx = tsc % uint16_t(worker_num_);
-  auto wrk = workers_[idx];
-  wrk->DelaySchedule(timeout, func, arg);
+  auto idx = tsc % uint16_t(g_tq.NumCores());
+  TaskQueue* tq = g_tq.AccessAtCore(idx);
+  tq->DelaySchedule(this, timeout, func, arg);
 }
-void ThreadPool::Worker::DelaySchedule(
-    uint64_t timeout, TaskFunc func, void* arg) {
+
+void TaskQueue::DelaySchedule(
+    ThreadPool* tp, uint64_t timeout, TaskFunc func, void* arg) {
   /*
    * pthread_cond_timedwait api use absolute API
    * so we need gettimeofday + timeout
@@ -169,7 +198,7 @@ void ThreadPool::Worker::DelaySchedule(
   uint64_t exec_time = now.tv_sec * 1000000 + timeout * 1000 + now.tv_usec;
 
   mu_.Lock();
-  if (!thread_pool_->should_stop()) {
+  if (!tp->should_stop()) {
     time_queue_.push(TimeTask(exec_time, func, arg));
     rsignal_.Signal();
   }
@@ -178,7 +207,8 @@ void ThreadPool::Worker::DelaySchedule(
 
 void ThreadPool::cur_queue_size(size_t* qsize) {
   size_t n = 0;
-  for (auto w : workers_) {
+  for (size_t i = 0; i < g_tq.NumCores(); ++i) {
+    TaskQueue* w = g_tq.AccessAtCore(i);
     slash::MutexLock l(&w->mu_);
     n += w->queue_.size();
   }
@@ -187,8 +217,8 @@ void ThreadPool::cur_queue_size(size_t* qsize) {
 
 void ThreadPool::cur_time_queue_size(size_t* qsize) {
   size_t n = 0;
-  for (auto w : workers_) {
-    slash::MutexLock l(&w->mu_);
+  for (size_t i = 0; i < g_tq.NumCores(); ++i) {
+    TaskQueue* w = g_tq.AccessAtCore(i);
     n += w->time_queue_.size();
   }
   *qsize = n;
@@ -201,42 +231,47 @@ std::string ThreadPool::thread_pool_name() {
 void ThreadPool::Worker::WorkerRun() {
   ThreadPool* tp = thread_pool_;
   while (!tp->should_stop()) {
-    mu_.Lock();
-    while (queue_.empty() && time_queue_.empty() && !tp->should_stop()) {
-      rsignal_.Wait();
-    }
-    if (tp->should_stop()) {
-      mu_.Unlock();
-      break;
-    }
-    if (!time_queue_.empty()) {
-      struct timeval now;
-      gettimeofday(&now, NULL);
+    TaskQueue* tq = g_tq.Access();
+    tq->RunOnce(tp);
+  }
+}
 
-      TimeTask time_task = time_queue_.top();
-      uint64_t unow = now.tv_sec * 1000000 + now.tv_usec;
-      if (unow / 1000 >= time_task.exec_time / 1000) {
-        TaskFunc func = time_task.func;
-        void* arg = time_task.arg;
-        time_queue_.pop();
-        mu_.Unlock();
-        (*func)(arg);
-        continue;
-      } else if (queue_.empty() && !tp->should_stop()) {
-        rsignal_.TimedWait(
-            static_cast<uint32_t>((time_task.exec_time - unow) / 1000));
-        mu_.Unlock();
-        continue;
-      }
-    }
-    if (!queue_.empty()) {
-      TaskFunc func = queue_.front().func;
-      void* arg = queue_.front().arg;
-      queue_.pop_front();
-      wsignal_.Signal();
+void TaskQueue::RunOnce(ThreadPool* tp) {
+  mu_.Lock();
+  while (queue_.empty() && time_queue_.empty() && !tp->should_stop()) {
+    rsignal_.Wait();
+  }
+  if (tp->should_stop()) {
+    mu_.Unlock();
+    return;
+  }
+  if (!time_queue_.empty()) {
+    struct timeval now;
+    gettimeofday(&now, NULL);
+
+    TimeTask time_task = time_queue_.top();
+    uint64_t unow = now.tv_sec * 1000000 + now.tv_usec;
+    if (unow / 1000 >= time_task.exec_time / 1000) {
+      TaskFunc func = time_task.func;
+      void* arg = time_task.arg;
+      time_queue_.pop();
       mu_.Unlock();
       (*func)(arg);
+      return;
+    } else if (queue_.empty() && !tp->should_stop()) {
+      rsignal_.TimedWait(
+          static_cast<uint32_t>((time_task.exec_time - unow) / 1000));
+      mu_.Unlock();
+      return;
     }
+  }
+  if (!queue_.empty()) {
+    TaskFunc func = queue_.front().func;
+    void* arg = queue_.front().arg;
+    queue_.pop_front();
+    wsignal_.Signal();
+    mu_.Unlock();
+    (*func)(arg);
   }
 }
 }  // namespace pink
