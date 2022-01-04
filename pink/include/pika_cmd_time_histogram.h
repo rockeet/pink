@@ -46,7 +46,7 @@ public:
   std::string GetTimeMetric();
 //size_t  (*m_get_idx)(fstring) = nullptr;
   fstring (*m_get_name)(size_t) = nullptr;
-  static constexpr size_t HistogramNum = 150;
+  static constexpr size_t HistogramNum = 151;
 private:
   void AddTimeMetric(size_t cmd_idx, uint64_t value, CmdProcessStep step);
   rocksdb::HistogramStat* HistogramTable[HistogramNum][StepMax];

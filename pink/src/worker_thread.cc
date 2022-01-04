@@ -199,6 +199,8 @@ void *WorkerThread::ThreadMain() {
             LOG(INFO) << "write_status = " << enum_stdstr(write_status);
             should_close = 1;
           }
+
+          if (in_conn->is_quit()) should_close = 1;
         }
 
         if (!should_close && (pfe->mask & EPOLLIN)) {
