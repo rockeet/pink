@@ -6,6 +6,9 @@
 #ifndef PINK_INCLUDE_PB_CONN_H_
 #define PINK_INCLUDE_PB_CONN_H_
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wtype-limits"
+
 #include <string>
 #include <map>
 #include <queue>
@@ -57,17 +60,17 @@ class PbConn: public PinkConn {
   // 1. protocol parsing error
   // 2. service logic error
   //
-  // protocol parsing error means that we receive a message that is not 
+  // protocol parsing error means that we receive a message that is not
   // a protobuf message that we know,
   // in this situation we should close this connection.
   // why we should close connection?
-  // beacause if we parse protocol error, it means that the content in this 
+  // beacause if we parse protocol error, it means that the content in this
   // connection can't not be parse, we can't recognize the next message.
   // The only thing we can do is close this connection.
   // in this condition the DealMessage should return -1;
   //
   //
-  // the logic error means that we have receive the message, and the 
+  // the logic error means that we have receive the message, and the
   // message is protobuf message that we define in proto file.
   // After receiving this message, we start execute our service logic.
   // the service logic error we should put it in res_, and return 0
@@ -88,4 +91,7 @@ class PbConn: public PinkConn {
 };
 
 }  // namespace pink
+
+#pragma GCC diagnostic pop
+
 #endif  // PINK_INCLUDE_PB_CONN_H_

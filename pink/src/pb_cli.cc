@@ -6,7 +6,10 @@
 #include <netinet/in.h>
 #include <fcntl.h>
 #include <unistd.h>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wtype-limits"
 #include <google/protobuf/message.h>
+#pragma GCC diagnostic pop
 
 #include "slash/include/xdebug.h"
 #include "pink/include/pink_cli.h"

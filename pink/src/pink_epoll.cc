@@ -15,6 +15,8 @@
 
 namespace pink {
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wclass-memaccess"
 PinkItem::PinkItem(const int fd, const std::string &ip_port, NotifyType type) {
   memset(this, 0, sizeof(*this));
   fd_ = fd;
@@ -22,6 +24,8 @@ PinkItem::PinkItem(const int fd, const std::string &ip_port, NotifyType type) {
   TERARK_VERIFY_LT(ip_port.size(), sizeof(ip_port_));
   memcpy(ip_port_, ip_port.c_str(), ip_port.size()+1);
 }
+#pragma GCC diagnostic pop
+
 PinkItem::~PinkItem() = default; // for shared_ptr<PinkConn>
 void PinkItem::kill_sp_conn() {
   std::shared_ptr<class PinkConn> killer(std::move(conn));
