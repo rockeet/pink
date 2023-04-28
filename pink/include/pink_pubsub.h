@@ -32,7 +32,7 @@ class PinkEpoll;
 struct PinkFiredEvent;
 class PinkConn;
 
-class PubSubThread : public Thread {
+class PubSubThread final : public Thread {
  public:
   PubSubThread();
 
