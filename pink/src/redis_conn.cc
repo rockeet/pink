@@ -168,23 +168,40 @@ WriteStatus RedisConn::SendReply() {
   }
 #else
   int num = response_.size();
+  if (0 == num) {
+    fprintf(stderr, "ERROR: RedisConn::SendReply: response_ is empty @1\n");
+    return kWriteAll;
+  }
   iovec* iov;
   if (iov_idx_ < 0) {
     iov_.resize_no_init(num);
     iov = iov_.data();
-    for (int i = 0; i < num; ++i) {
-      iov[i].iov_base = response_[i].data();
-      iov[i].iov_len  = response_[i].size();
+    int i = 0;
+    for (int j = 0; j < num; ++j) {
+      if (response_[j].empty()) {
+        fprintf(stderr, "ERROR: RedisConn::SendReply: response_[%d of %d] is empty\n", j, num);
+      } else {
+        iov[i].iov_base = response_[j].data();
+        iov[i].iov_len  = response_[j].size();
+        i++;
+      }
     }
+    if (0 == i) {
+      fprintf(stderr, "ERROR: RedisConn::SendReply: response_ is empty @2\n");
+      return kWriteAll;
+    }
+    num = i; // non-empty num
+    iov_.resize_no_init(i);
     iov_idx_ = 0;
   }
   else {
+    num = (int)iov_.size(); // non-empty num
     iov = iov_.data();
   }
   do {
     nwritten = terark::easy_writev(fd(), iov, num, &iov_idx_);
     if (0 == iov[num-1].iov_len) { // all data was successful sent
-      TERARK_VERIFY_GT(nwritten, 0);
+      //TERARK_VERIFY_GT(nwritten, 0);
       response_.clear();
       iov_.erase_all();
       iov_idx_ = -1;
