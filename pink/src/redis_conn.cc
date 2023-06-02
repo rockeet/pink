@@ -191,7 +191,7 @@ WriteStatus RedisConn::SendReply() {
       return kWriteAll;
     }
     num = i; // non-empty num
-    iov_.resize_no_init(i);
+    iov_.risk_set_size(i);
     iov_idx_ = 0;
   }
   else {
