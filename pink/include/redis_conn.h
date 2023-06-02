@@ -65,6 +65,7 @@ class RedisConn: public PinkConn {
   uint32_t wbuf_pos_;
   std::string response_;
 #else
+  int num_retry_ = 0;
   int iov_idx_ = -1;
   std::vector<std::string> response_;
   terark::valvec<iovec> iov_;

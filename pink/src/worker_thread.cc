@@ -227,10 +227,12 @@ void *WorkerThread::ThreadMain() {
           int fd = pconn->fd();
           pink_epoll_->PinkDelEvent(pconn);
           CloseFd(in_conn);
+          /*
           LOG(INFO) << "CloseFd(" << in_conn->ip_port() << "):"
                     << " mask = " << std::hex << pfe->mask
                     << ", should_close = " << should_close
                     ;
+          */
           in_conn = NULL;
           {
             slash::WriteLock l(&rwlock_);

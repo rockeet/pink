@@ -211,8 +211,19 @@ WriteStatus RedisConn::SendReply() {
 #endif
   if (nwritten == -1) {
     if (errno == EAGAIN) {
+      num_retry_ = 0;
       return kWriteHalf;
+    } else if (errno == EDEADLK) {
+      if (num_retry_ < 5) {
+        num_retry_++;
+        return kWriteHalf;
+      } else {
+        fprintf(stderr, "ERROR: RedisConn::SendReply: exceeds retry 5\n");
+        num_retry_ = 0;
+        return kWriteError;
+      }
     } else {
+      num_retry_ = 0;
       // Here we should close the connection
       return kWriteError;
     }
